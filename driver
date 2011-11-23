@@ -2,8 +2,7 @@
 
 file=$1
 baseFile=${file%%.c}
-asmFile=${file%%.c}.s
 exeFile=$baseFile
 
-babycc $file >$asmFile &&
-    gcc $asmFile rts.o -o $exeFile
+babycc $file &&
+    gcc e.s rts.o -o $exeFile

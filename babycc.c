@@ -47,6 +47,7 @@ typedef enum {
 //---------------------------------------------------------------
 //  Variable Declarations
 //---------------------------------------------------------------
+FILE *g_out = NULL;
 static char* parseString;
 static int pos = 0;
 static int g_lineNum = 1;
@@ -140,7 +141,7 @@ char *NewLabel()
 // --------------------------------------------------------------
 void Emit(char *s)
 {
-    printf("\t%s", s);
+    fprintf(g_out, "\t%s", s);
 }
 
 // --------------------------------------------------------------
@@ -149,12 +150,12 @@ void Emit(char *s)
 void EmitLn(char *s)
 {
    Emit(s);
-   printf("\n");
+   fprintf(g_out, "\n");
 }
 
 void EmitLabel(char *label)
 {
-    printf("%s:\n", label);
+    fprintf(g_out, "%s:\n", label);
 }
 
 // --------------------------------------------------------------
@@ -366,9 +367,9 @@ PUBLIC void EmitStoreParam(int n)
 //---------------------------------------------------------------
 PUBLIC void EmitFunctionPreamble(char *name, int numLocals)
 {
-    printf(".globl %s\n", name);
-    printf("\t.type\t%s, @function\n", name);
-    printf("%s:\n", name);
+    fprintf(g_out, ".globl %s\n", name);
+    fprintf(g_out, "\t.type\t%s, @function\n", name);
+    fprintf(g_out, "%s:\n", name);
 
     // function preamble
     EmitLn("pushl\t%ebp");
@@ -813,6 +814,12 @@ void Init(char *s)
 
     RegisterGlobal("printi", FunctionType, 1);
     RegisterGlobal("println", FunctionType, 0);
+
+    g_out = fopen("e.s", "w");
+    if (g_out == NULL) {
+        fprintf(stderr, "cannot open e.s\n");
+        exit(1);
+    }
 }
 
 //===============================================================
@@ -1391,6 +1398,12 @@ void FunctionDecl(char *name, Type type)
 
     // register before Block() for recursive function calls
     RegisterGlobal(name, FunctionType, g_base);
+
+    /*
+    EmitFunctionPreamble(name, g_localDeclarations);
+    EmitFunctionPreamble(name);
+    Block();
+    */
 
     // XXX This is a modified copy of Block() right here.
     // XXX It was necessary to delay EmitFunctionPreamble until

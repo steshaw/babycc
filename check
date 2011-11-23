@@ -11,7 +11,7 @@ expected=$2
 echo -------------------------------------------------------------------------
 echo EXPRESSION: $expression
 echo -------------------------------------------------------------------------
-babycc -e "$expression" >expression.s 2>babycc.out
+babycc -e "$expression" 2>babycc.out
 if [ $? -ne 0 ]; then
     echo "expression '$expression' failed with:"
     cat b babycc.out
@@ -21,8 +21,8 @@ if [ $? -ne 0 ]; then
     fi
     exit 0
 fi
-cat expression.s
-gcc expression.s main.o -o expression
+cat e.s
+gcc e.s main.o -o expression
 if [ $? -ne 0 ]; then
     echo "assembler failed on expression '$expression'"
     exit 1
