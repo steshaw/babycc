@@ -5,4 +5,4 @@ baseFile=${file%%.c}
 asmFile=${baseFile}.s
 exeFile=$baseFile
 
-babycc $file && mv e.s $asmFile && gcc $asmFile rts.o -o $exeFile
+./babycc $file && mv e.s $asmFile && gcc $asmFile rts.o -o $exeFile

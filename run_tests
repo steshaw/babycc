@@ -7,5 +7,5 @@ for expectedFile in tests/*.expected; do
     cFile=${baseFile}.c
 
     echo "--- $cFile ---"
-    driver $cFile && $baseFile >$baseFile.out && diff $expectedFile $outFile
+    ./driver $cFile && $baseFile >$baseFile.out && diff $expectedFile $outFile
 done
