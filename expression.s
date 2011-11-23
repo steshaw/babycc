@@ -3,17 +3,18 @@
 expression:
 	pushl	%ebp
 	movl	%esp, %ebp
-	movl	$10, %eax
-	movl %eax, t
-.L1:
-	movl	t, %eax
-	je	.L2
-	movl	$8, %eax
-	movl %eax, t
+	movl	$1, %eax
+	pushl	%eax
+	movl	$0, %eax
+	popl	%ebx
+	cmpl	$0, %ebx
+	je	.L1
+	cmpl	$0, %eax
+	je	.L1
 	jmp	.L2
-	jmp	.L1
+.L1:
+	movl	$0, %eax
 .L2:
-	pop	%ebp
+	popl	%ebp
 	ret
 	.size	expression, .-expression
-	.comm	t,4,4

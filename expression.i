@@ -911,6 +911,39 @@ extern void funlockfile (FILE *__stream) ;
 int a;
 int b;
 
+int Not(int a)
+{
+    return !a;
+}
+
+int Or(int a, int b)
+{
+    return a || b;
+}
+
+int And(int a, int b)
+{
+    return a && b;
+}
+
+int Add(int a, int b)
+{
+    return a + b;
+}
+
+int Sub(int a, int b)
+{
+    return a - b;
+}
+
+int d(void)
+{
+    int a = 1;
+    int b = 2;
+
+    return a - -b;
+}
+
 int c(void)
 {
     if (a == 10)

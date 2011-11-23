@@ -59,7 +59,9 @@ enum Token {
     DO,
     BREAK,
     TrueToken,
-    FalseToken
+    FalseToken,
+    OrToken,
+    AndToken,
 };
 
 //---------------------------------------------------------------
@@ -178,6 +180,8 @@ struct Keyword keywords[] = {
     DEF_KEYWORD("break", BREAK),
     DEF_KEYWORD("true", TrueToken),
     DEF_KEYWORD("false", FalseToken),
+    DEF_KEYWORD("||", OrToken),
+    DEF_KEYWORD("&&", AndToken),
 };
 
 // calculate the size of a static array
@@ -313,8 +317,13 @@ char* GetNum()
     return result;
 }
 
+static bool IsBoolean(int token)
+{
+    return token == TrueToken || token == FalseToken;
+}
+
 // --------------------------------------------------------------
-bool GetBoolean()
+static bool GetBoolean()
 {
     if (lookahead == TrueToken) {
         return true;
@@ -410,7 +419,7 @@ void Term(void)
 {
     Factor();
     while (lookahead == '*' || lookahead == '/') {
-        EmitLn("push\t%eax");
+        EmitLn("pushl\t%eax");
         switch (lookahead) {
             case '*': Multiply(); break;
             case '/': Divide(); break;
@@ -458,13 +467,118 @@ void Expression(void)
     else Term();
 
     while (IsAddOp(lookahead)) {
-        EmitLn("push\t%eax");
+        EmitLn("pushl\t%eax");
         switch (lookahead) {
             case '+': Add(); break;
             case '-': Subtract(); break;
         }
     }
 
+}
+
+static void BooleanTerm(void); // forward declaration
+
+//---------------------------------------------------------------
+// Implements short-cut || operator.
+//---------------------------------------------------------------
+void Or(void)
+{
+    Match(OrToken);
+    BooleanTerm();
+
+    char *trueLabel = NewLabel();
+    char *endLabel = NewLabel();
+
+    // compare first false/zero
+    EmitLn("popl\t%ebx");  // pop value from stack into temp
+    EmitLn("cmpl\t$0, %ebx");
+    EmitOp1("jne", trueLabel);
+
+    // compare second with false/zero
+    EmitLn("cmpl\t$0, %eax");
+    EmitOp1("jne", trueLabel);
+    EmitOp1("jmp", endLabel);
+
+    // load 1/true
+    EmitLabel(trueLabel);
+    EmitLn("movl\t$1, %eax");
+
+    EmitLabel(endLabel);
+}
+
+
+//---------------------------------------------------------------
+static void BooleanFactor(void)
+{
+    if (!IsBoolean(lookahead)) Expected("Boolean literal");
+    if (GetBoolean()) {
+        Match(TrueToken);
+        EmitLn("movl\t$1, %eax");// could use -1 and then bitwize not is 0
+    }
+    else {
+        Match(FalseToken);
+        EmitLn("movl\t$0, %eax"); // XXX is there a cheaper way to load zero?
+    }
+}
+
+static void NotFactor(void)
+{
+    if (lookahead == '!') {
+        Match('!');
+        BooleanFactor();
+
+        EmitLn("cmpl\t$0, %eax");
+	EmitLn("sete\t%al");
+	EmitLn("movzbl\t%al, %eax"); // XXX is this the movzx instruction?
+    }
+    else BooleanFactor();
+}
+
+//---------------------------------------------------------------
+// Implements short-cut && operator.
+//---------------------------------------------------------------
+void And(void)
+{
+    Match(AndToken);
+    NotFactor();
+
+    char *falseLabel = NewLabel();
+    char *endLabel = NewLabel();
+
+    // compare first false/zero
+    EmitLn("popl\t%ebx");  // pop value from stack into temp
+    EmitLn("cmpl\t$0, %ebx");
+    EmitOp1("je", falseLabel);
+
+    // compare second with false/zero
+    EmitLn("cmpl\t$0, %eax");
+    EmitOp1("je", falseLabel);
+    EmitOp1("jmp", endLabel);
+
+    // load 0/false
+    EmitLabel(falseLabel);
+    EmitLn("movl\t$0, %eax");
+
+    EmitLabel(endLabel);
+}
+
+void BooleanTerm(void)
+{
+    NotFactor();
+    while (lookahead == AndToken) {
+        EmitLn("pushl\t%eax");
+        And();
+    }
+}
+
+//---------------------------------------------------------------
+void BooleanExpression(void)
+{
+    BooleanTerm();
+    while (lookahead == OrToken) {
+        EmitLn("push\t%eax");
+        Or();
+    }
 }
 
 //---------------------------------------------------------------
@@ -616,7 +730,7 @@ void EmitFunctionPreamble(char *name)
 //---------------------------------------------------------------
 void EmitFunctionPostamble(char *name)
 {
-    EmitLn("pop\t%ebp");
+    EmitLn("popl\t%ebp");
     EmitLn("ret");
     {
         char op[256];
@@ -654,6 +768,19 @@ void Top(void)
     Match('\0'); // end of stream
 }
 
+//---------------------------------------------------------------
+void BooleanTop(void)
+{
+    EmitFunctionPreamble("expression");
+
+    BooleanExpression();
+
+    EmitFunctionPostamble("expression");
+    EmitGlobalVariableDefinitions();
+
+    Match('\0'); // end of stream
+}
+
 // --------------------------------------------------------------
 //  Main Program
 // --------------------------------------------------------------
@@ -664,7 +791,8 @@ int main(int argc, char*argv[])
         exit(2);
     }
     Init(argv[1]);
-    Top();
+    //Top();
+    BooleanTop();
 
     return 0;
 }
