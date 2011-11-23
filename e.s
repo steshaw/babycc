@@ -3,7 +3,7 @@
 main:
 	pushl	%ebp
 	movl	%esp, %ebp
-	subl	$4, %esp
+	subl	$0                                , %esp
 	movl	$0, %eax
 	movl	%eax, -4(%ebp)
 .L1:

@@ -1,6 +1,6 @@
 rm -f *.o superc
 cc -g -Wall --std=c99  -D __USE_POSIX          babycc.c   -o babycc
 babycc.c: In function `ReadFile':
-babycc.c:1479: warning: implicit declaration of function `fileno'
+babycc.c:1511: warning: implicit declaration of function `fileno'
 cc -g -Wall --std=c99  -D __USE_POSIX         -c -o main.o main.c
 cc -g -Wall --std=c99  -D __USE_POSIX         -c -o rts.o rts.c

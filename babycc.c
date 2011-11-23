@@ -68,6 +68,13 @@ static int g_base = 0;
 static char* g_paramNames[256]; // XXX hard limit :-(
 //static char parameterTypes[256];   // XXX currently all integer
 
+
+void PrintUnixError(char *s)
+{
+    perror(s);
+    exit(1);
+}
+
 void* SafeMalloc(int n)
 {
     void *result;
@@ -364,8 +371,11 @@ PUBLIC void EmitStoreParam(int n)
     EmitOp2("movl", "%eax", param);
 }
 
+// Only used by EmitFunctionPreamble() and PatchNumLocals().
+long g_numLocalsPatchPos;
+
 //---------------------------------------------------------------
-PUBLIC void EmitFunctionPreamble(char *name, int numLocals)
+PUBLIC void EmitFunctionPreamble(char *name)
 {
     fprintf(g_out, ".globl %s\n", name);
     fprintf(g_out, "\t.type\t%s, @function\n", name);
@@ -375,10 +385,31 @@ PUBLIC void EmitFunctionPreamble(char *name, int numLocals)
     EmitLn("pushl\t%ebp");
     EmitLn("movl\t%esp, %ebp");
 
+    fprintf(g_out, "\tsubl\t");
+    // remember position - this is where the patch goes later
+    g_numLocalsPatchPos = ftell(g_out);
+    fprintf(g_out, "                                  ");
+
+    fprintf(g_out, ", %%esp\n");
+    /*
     char op[256];
     sprintf(op, "subl\t$%d, %%esp", numLocals*4);
-    // XXX This should have a different value for different # locals.
     EmitLn(op);
+    */
+}
+
+PUBLIC void PatchNumLocals(int numLocals)
+{
+    long currentPos = ftell(g_out);
+
+    // patch
+    int rc = fseek(g_out, g_numLocalsPatchPos, SEEK_SET);
+    if (rc != 0) PrintUnixError("fseek");
+    fprintf(g_out, "$%d", numLocals*4);
+
+    // back to proper place in output file
+    rc = fseek(g_out, currentPos, SEEK_SET);
+    if (rc != 0) PrintUnixError("fseek");
 }
 
 //---------------------------------------------------------------
@@ -1332,15 +1363,10 @@ void LocalDeclarations(void)
         RegisterParam(name);
         ++g_localDeclarations;
 
-/*
- XXX Doesn't work currently as the function preamble must be output
-     before any stores to local variables 
-
         // Optional assignment.
         if (g_token == '=') {
             AssignmentTail(name);
         }
-*/
 
         // Optional semicolon.
         if (g_token == ';') {
@@ -1399,20 +1425,21 @@ void FunctionDecl(char *name, Type type)
     // register before Block() for recursive function calls
     RegisterGlobal(name, FunctionType, g_base);
 
-    /*
-    EmitFunctionPreamble(name, g_localDeclarations);
+    //EmitFunctionPreamble(name, g_localDeclarations);
     EmitFunctionPreamble(name);
-    Block();
-    */
+    Block(NULL);
+    PatchNumLocals(g_localDeclarations);
 
     // XXX This is a modified copy of Block() right here.
     // XXX It was necessary to delay EmitFunctionPreamble until
     // XXX the number of local variable is known.
+    /*
     Match('{');
     LocalDeclarations();
     EmitFunctionPreamble(name, g_localDeclarations);
     Statements(NULL);
     Match('}');
+    */
     EmitFunctionPostamble(name);
     /*
     fprintf(stderr, "func %s(%d) : %s\n", name, g_numParams, 
