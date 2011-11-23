@@ -1,0 +1,9 @@
+#!/bin/sh
+
+expression=$1
+
+echo "expression is '$expression'"
+superc "$expression" >expression.s && 
+    cat expression.s && 
+    gcc expression.s main.o -o expression && 
+    ./expression

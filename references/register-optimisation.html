@@ -1,0 +1,125 @@
+<!DOCTYPE html PUBLIC "-//IETF//DTD HTML//EN">
+<html><head><title>Comp.compilers: Re: Jack W. Crenshaw - Any clues how to optimize ?</title><meta name="description" content="From comp.compilers newsgroup: Re: Jack W. Crenshaw - Any clues how to optimize ?"><meta name="keywords" content="compilers, programming"></head>
+
+
+
+<body bgcolor="white">
+<h1>Re: Jack W. Crenshaw - Any clues how to optimize ?</h1>
+<blockquote><i>From comp.compilers</i></blockquote><br>
+<table cellspacing="0" cellpadding="0">
+<tbody><tr><td><b>From: </b></td><td>Torben Mogensen &lt;<a href="mailto:torbenm@diku.dk">torbenm@diku.dk</a>&gt;</td></tr>
+<tr><td><b>Newsgroups: </b></td><td>comp.compilers</td></tr>
+<tr><td><b>Date: </b></td><td>18 Apr 1999 01:58:10 -0400</td></tr>
+<tr><td><b>Organization: </b></td><td>Compilers Central</td></tr>
+<tr><td><b>References: </b></td><td><a href="http://compilers.iecc.com/comparch/article/99-04-034">99-04-034</a></td></tr>
+<tr><td><b>Keywords: </b></td><td>optimize</td></tr>
+</tbody></table><p>
+Sten D. Sørsdal wrote:<br>
+</p><p>
+<i>&gt;I am working on simple compiler (currently only a "basic" to x86 asm</i><br>
+<i>&gt;converter).  It is based on the model by Jack W. Crenshaw. (Author of</i><br>
+<i>&gt;"Let's build a compiler" or something very similar).  I am having</i><br>
+<i>&gt;problems to accept the inefficiency on the expression calculations.</i><br>
+</p><p>
+<i>&gt;The code output is way below acceptable. Now i was wondering, how do i</i><br>
+<i>&gt;optimize this to be any better?  I was thinking about a postfix</i><br>
+<i>&gt;solution, but since this compiler is going to a singleparse, i have to</i><br>
+<i>&gt;do this exclusivly for expressions. I havent been able to write a good</i><br>
+<i>&gt;solution for this problem, as if often tend to "fixing" the postfix</i><br>
+<i>&gt;routine. Could someone help me with this?</i><br>
+</p><p>
+Stack-based postfix code for expressions tend to be fairly inefficient<br>
+as there is a lot of memory traffic. It is usually better to use<br>
+registers to hold the values during expression evaluation.<br>
+</p><p>
+A simple way of achieving this is to use some of the registers for a<br>
+small stack. To do this, you have to keep track of the stack-top<br>
+pointer during compile time. Most expressions can be evaluated using<br>
+only 4 registers, so you could simply reserve 4 registers for<br>
+expression evaluation and "overflow" to memory when needed. If we<br>
+assume that you use registers 0-3 for this, then<br>
+expression-translation code could look like:<br>
+</p><p>
+    expression | compile-time actions | code<br>
+-------------+----------------------+--------------------<br>
+    x          | reg_no = reg_no+1    | load x to reg_no<br>
+-------------+----------------------+--------------------<br>
+    e1+e2      | compile e1;          |<br>
+                          | compile e2;          |<br>
+                          | reg_no = regno-1     | ADD reg_no reg_no+1<br>
+</p><p>
+Initially, reg_no is set to -1, so the first variable is loaded to<br>
+register 0 (the actions are performed before the code is generated).<br>
+To handle overflow, the actions should test if reg_no is greater than<br>
+3 and then use some fixed memory locations based at adress BASE to<br>
+hold the excess values.  The translation for variable x now becomes<br>
+</p><p>
+    reg_no = reg_no+1<br>
+    if reg_no&lt;4 then<br>
+        code = load x to reg_no<br>
+    else<br>
+        code = move x to BASE+(reg_no-4)*4   /* assume byte-addressing */<br>
+</p><p>
+For e1+e2 you have to distinguish three cases:<br>
+</p><p>
+  1) both arguments in registers<br>
+  2) first argument in register, 2nd in memory<br>
+  3) both arguments in memory.<br>
+</p><p>
+Note that you will need an auxiliary register for moving values from<br>
+variables to memory locations and for doing arithmetic on values in<br>
+memory. If you can't reserve a total of 5 registers for expression<br>
+evaluation, you can reduce this to 4 by using only 3 for the stack.<br>
+</p><p>
+There are a few inefficiencies in the above strategy for using fixed<br>
+registers and memory locations to hold stack values. For example, if<br>
+the stack has overflowed to memory, then you first use a<br>
+memory-to-memory move for getting a variable to the stack and then<br>
+later take it from there to operate on it. It is better instead to<br>
+take it directly from the variable loation when you need to operate on<br>
+it. To achieve this, a "lazy" loading scheme can be used. In this, you<br>
+don't load variables into registers or stack-slots until you need to<br>
+operate on them, and at that point you exploit the x86 instructions<br>
+that can take an argument from memory to avoid doing so in some of the<br>
+cases.<br>
+</p><p>
+The idea is to keep a compile-time model of the stack, where the model<br>
+for each stack-entry tells where the value can be found. This can be<br>
+in a register, in a variable or in a memory-based stack slot.<br>
+Additionally, you keep track of which registers and stack-slots hold<br>
+values that are needed later on. When compiling a variable, no code is<br>
+generated but the compile-time stack is updated to indicate that the<br>
+stack-top is to be found in the variables location. When compiling<br>
+(say) an addition, the generated code depends on where the operands<br>
+are found:<br>
+</p><p>
+  1) If one operand is in a register and the other in memory, an<br>
+        instruction that adds the memory-contents to the register is<br>
+        generated and the compile-time stack description is updated to<br>
+        indicate that the new stack-top is in the register.<br>
+</p><p>
+  2) If both arguments are in registers, a prely register-based<br>
+        addition instruction is generated using one register as both<br>
+        operand and destination and the register description now indicates<br>
+        that the register holding the other operand is free. The<br>
+        compile-time stack is updated as indicated above.<br>
+</p><p>
+  3) If both arguments are in memory, a register for doing the<br>
+        operation needs to be found. We hence look in the register<br>
+        description for a free register, mark it as used and load one<br>
+        operand into this and proceed as in case 1. If no free register is<br>
+        available, one is made so by moving a register to memory. The<br>
+        compile-time stack is updated to reflect the new location of the<br>
+        stack element that used to be in the register (hence, the register<br>
+        description must also record which stack element is held in a used<br>
+        register).<br>
+</p><p>
+	Torben Mogensen (<a href="mailto:torbenm@diku.dk">torbenm@diku.dk</a>)<br>
+</p><hr>
+<p><a href="http://compilers.iecc.com/index.html"><img src="register-optimisation_files/up.gif"></a>
+Return to the
+<a href="http://compilers.iecc.com/index.html">comp.compilers page</a>.
+<br><a href="http://compilers.iecc.com/compsearch.phtml"><img src="register-optimisation_files/left.gif"></a>
+Search the
+<a href="http://compilers.iecc.com/compsearch.phtml">comp.compilers archives</a> again.
+</p></body></html>

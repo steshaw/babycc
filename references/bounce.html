@@ -1,0 +1,45 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+<head>
+    <title>Redirect</title>
+    <meta content="text/html; charset=windows-1252">
+    <meta http-equiv="Refresh" content="10; 'http://www.pobox.com/~qed/">
+</head>
+
+<script language="JavaScript" type="text/javascript"><!--
+    function getBounceUrl () {
+	x = '' + document.location;
+	i = x.indexOf ('bounce.html?');
+	if (i != -1) {
+		return x.substr (i+12, 1000000);
+	} else {
+		if (document.location.hash) {
+			return document.location.hash.substring (1, 1000000);
+		} else {
+			if (document.referrer) {
+				return document.referrer;
+			} else {
+				return 'http://www.pobox.com/~qed/';
+			}
+		}
+	}
+    }
+
+    function redirect () {
+	self.setTimeout ("self.location.href=getBounceUrl();", 250);
+    }
+    // -->
+</script>
+
+<body onLoad="redirect()">
+
+<script language="JavaScript" type="text/javascript"><!--
+    document.writeln ('<img src="http://www.azillionmonkeys.com/qed/bounce.jpg?' + document.referrer + '?' + getBounceUrl() + '" width=162 height=150 alt="Bouncing Ball">');
+    document.writeln ('<p>Redirecting to <a href="' + getBounceUrl() +'">'+ getBounceUrl() + '</a>');
+    // -->
+</script>
+
+</body>
+
+</html>
