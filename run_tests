@@ -1,0 +1,11 @@
+#!/bin/sh
+
+for expectedFile in tests/*.expected; do
+    baseFile=${expectedFile%.expected}
+    exeFile=$baseFile
+    outFile=${baseFile}.out
+    cFile=${baseFile}.c
+
+    echo "--- $cFile ---"
+    driver $cFile && $baseFile >$baseFile.out && diff $expectedFile $outFile
+done

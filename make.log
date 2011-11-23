@@ -1,6 +1,9 @@
 rm -f *.o superc
-cc -g -Wall --std=c99    superc.c   -o superc
-cc -g -Wall --std=c99   -c -o main.o main.c
+cc -g -Wall --std=c99  -D __USE_POSIX          superc.c   -o superc
+superc.c: In function `ReadFile':
+superc.c:1461: warning: implicit declaration of function `fileno'
+cc -g -Wall --std=c99  -D __USE_POSIX         -c -o main.o main.c
+cc -g -Wall --std=c99  -D __USE_POSIX         -c -o rts.o rts.c
 -------------------------------------------------------------------------
 EXPRESSION: void expression(){int a; a=1; }
 -------------------------------------------------------------------------
@@ -102,7 +105,13 @@ void expression(p1, p2) {                int a                                  
 EXPRESSION: int a; void main(){a}
 -------------------------------------------------------------------------
 expression 'int a; void main(){a}' failed with:
-Error: '=' expected.
+pos = 22
+lineNum = 1
+linePos = 23
+token = 'a'
+Error: '=' (61) expected.
+EXPECTED pos = 22\ntoken = 'a'\nError: '=' (61) expected.
+make: [check] Error 1 (ignored)
 -------------------------------------------------------------------------
 EXPRESSION: int n; void expression(){n=8+4}
 -------------------------------------------------------------------------
@@ -541,7 +550,13 @@ int n void expression(){n=10 do { n = n - 1 } while (n)} => 0
 EXPRESSION: int a int b void expression(){a=1 break b=2}
 -------------------------------------------------------------------------
 expression 'int a int b void expression(){a=1 break b=2}' failed with:
+pos = 42
+lineNum = 1
+linePos = 43
+token = 'b'
 Error: break statement not within loop.
+EXPECTED Error: break statement not within loop.
+make: [check] Error 1 (ignored)
 -------------------------------------------------------------------------
 EXPRESSION: int n void expression(){n=10 do { break } while (n)}
 -------------------------------------------------------------------------
@@ -1081,7 +1096,13 @@ int t int foo(a){t=10} int expression(argc, argv) {t=foo(1)} => 10
 EXPRESSION: int t int foo(a){t=10} int expression(argc, argv) { t=foo(1,2) }
 -------------------------------------------------------------------------
 expression 'int t int foo(a){t=10}                     int expression(argc, argv) {               t=foo(1,2)                             }' failed with:
+pos = 127
+lineNum = 1
+linePos = 128
+token = '2'
 Error: attempt call with incorrect number of arguments.
+EXPECTED Error: attempt call with incorrect number of arguments.
+make: [check] Error 1 (ignored)
 -------------------------------------------------------------------------
 EXPRESSION: int a int b int foo(n) {a=n}void expression(){b = foo(9) a=a }
 -------------------------------------------------------------------------

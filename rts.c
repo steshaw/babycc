@@ -14,9 +14,3 @@ void println(void)
 {
     putchar('\n');
 }
-
-int main()
-{
-    printf("%d\n", expression());
-    return 0;
-}

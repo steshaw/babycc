@@ -11,10 +11,10 @@ expected=$2
 echo -------------------------------------------------------------------------
 echo EXPRESSION: $expression
 echo -------------------------------------------------------------------------
-superc "$expression" >expression.s 2>superc.out
+babycc -e "$expression" >expression.s 2>babycc.out
 if [ $? -ne 0 ]; then
     echo "expression '$expression' failed with:"
-    cat superc.out
+    cat b babycc.out
     if [ "`<superc.out`" != "$expected" ]; then
         echo "EXPECTED $expected"
         exit 1

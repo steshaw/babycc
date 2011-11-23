@@ -1,5 +1,5 @@
 //
-// superc - Super C Compiler
+// babycc - Baby C Compiler
 //
 // eax is used as the "accumulator" register
 // ebx is used as the "temporary" register (used to get store value from the
@@ -17,6 +17,10 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <assert.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 typedef enum {
     IfToken = 256, // Start after the ascii characters 0-255
@@ -36,6 +40,8 @@ typedef enum {
 
     IntToken,
     VoidToken,
+
+    ReturnToken,
 } Token;
 
 //---------------------------------------------------------------
@@ -43,6 +49,8 @@ typedef enum {
 //---------------------------------------------------------------
 static char* parseString;
 static int pos = 0;
+static int g_lineNum = 1;
+static int g_linePos = 1;
 static int lookahead;
 static int numGlobals = 0;
 static char* globalNames[256]; // XXX hard limit :-(
@@ -82,6 +90,35 @@ char *GcStrDup(char *s)
     char *newString = GcMalloc(strlen(s) + 1);
     strcpy(newString, s);
     return newString;
+}
+
+char *TokenToString(Token token)
+{
+    if (token < 256) {
+        // It's a character.
+        char buf[256];
+        sprintf(buf, "'%c' (%d)", token, token);
+        return GcStrDup(buf);
+    }
+    else {
+        switch (token) {
+            case IfToken: return "if";
+            case ElseToken: return "else";
+            case WhileToken: return "while";
+            case DoToken: return "do";
+            case BreakToken: return "break";
+            case OrToken: return "or";
+            case AndToken: return "and";
+            case EqualsToken: return "==";
+            case NotEqualsToken: return "!=";
+            case IdentifierToken: return "<identifier>";
+            case NumberToken: return "<number>";
+            case IntToken: return "int";
+            case VoidToken: return "void";
+            case ReturnToken: return "return";
+            default: return "bad-token";
+        }
+    }
 }
 
 //===============================================================
@@ -255,9 +292,9 @@ void EmitBranch(char *label)
 PRIVATE void EmitRelationalOperator(char *setInstruction)
 {
     EmitLn("popl\t%ebx");
-    EmitLn("cmpl\t%ebx, %eax");
-    EmitOp1(setInstruction, "al");
-    EmitLn("movzbl\t%al, %eax");
+    EmitLn("cmpl\t%eax, %ebx");
+    EmitOp1(setInstruction, "%bl");
+    EmitLn("movzbl\t%bl, %eax");
 }
 
 //---------------------------------------------------------------
@@ -383,8 +420,24 @@ static char *g_tokenValue;
 ///---------------------------------------------------------------
 void GetChar(void)
 {
+    // skip comments.
+    // XXX Comments are skipped even in-between characters!!!
+    if (parseString[pos] == '/' && parseString[pos+1] == '/') {
+        pos += 2;
+        while (parseString[pos] && parseString[pos] != '\n') {
+            ++pos, 
+            ++g_linePos;
+        }
+    }
     lookahead = parseString[pos]; // was: "lookahead = getchar();"
     ++pos;
+    ++g_linePos;
+
+    // reset line number
+    if (lookahead == '\n') {
+        ++g_lineNum;
+        g_linePos = 1;
+    }
 }
 
 // --------------------------------------------------------------
@@ -410,6 +463,11 @@ void Abort(char *s) __attribute__ ((noreturn));
 
 void Abort(char *s)
 {
+    fprintf(stderr, "pos = %d\n", pos);
+    fprintf(stderr, "lineNum = %d\n", g_lineNum);
+    fprintf(stderr, "linePos = %d\n", g_linePos);
+    fprintf(stderr, "token = '%s'\n", g_tokenValue);
+
     Error(s);
     exit(1);
 }
@@ -568,6 +626,7 @@ Keyword keywords[] = {
     DEF_KEYWORD("break", BreakToken),
     DEF_KEYWORD("int", IntToken),
     DEF_KEYWORD("void", VoidToken),
+    DEF_KEYWORD("return", ReturnToken),
 };
 
 
@@ -735,10 +794,7 @@ void Match(int token)
         Expected("End of stream");
     }
     else {
-        // FIXME - Need PrintToken here
-        char s[] = "'_'";
-        s[1] = token;
-        Expected(s);
+        Expected(TokenToString(token));
     }
 }
 
@@ -754,6 +810,9 @@ void Init(char *s)
     for (int i = 0; i < 256; ++i) {
         g_paramNames[i] = "";
     }
+
+    RegisterGlobal("printi", FunctionType, 1);
+    RegisterGlobal("println", FunctionType, 0);
 }
 
 //===============================================================
@@ -832,7 +891,7 @@ void Factor(void)
 
     if (g_token == '(') {
         Match('('); // could be Scan();
-        Expression();
+        BooleanExpression();
         Match(')');
     }
     else if (g_token == IdentifierToken) {
@@ -1086,7 +1145,9 @@ void BooleanTerm(void)
 }
 
 
-//---------------------------------------------------------------
+//----------------------------------------------------------------------------
+// XXX: Instead should be called TopExpression or Expression0 or something.
+//----------------------------------------------------------------------------
 void BooleanExpression(void)
 {
     BooleanTerm();
@@ -1097,20 +1158,36 @@ void BooleanExpression(void)
 }
 
 //---------------------------------------------------------------
-void Assignment(void)
+void AssignmentTail(char *name)
 {
-    char *name = g_tokenValue;
-    Match(IdentifierToken);
-    bool isGlobal = CheckDefined(name);
     Match('=');
     BooleanExpression();
     // variable reference
+    bool isGlobal = CheckDefined(name);
     if (isGlobal) {
         EmitStore(name);
     }
     else {
         int index = ParamNameIndex(name);
         EmitStoreParam(index);
+    }
+}
+
+//---------------------------------------------------------------
+void Assignment(void)
+{
+    char *name = g_tokenValue;
+    Match(IdentifierToken);
+    //bool isGlobal = CheckDefined(name);
+
+    // FIXME: Evil hack to enable FunctionCalls as Statements.
+    // FIXME: Statements don't exist in C. Everything should be
+    // FIXME: an expression!
+    if (g_token == '(') {
+        FunctionCall(name);
+    }
+    else {
+        AssignmentTail(name);
     }
 }
 
@@ -1185,6 +1262,14 @@ void Break(char* innermostLoopLabel)
     EmitBranch(innermostLoopLabel);
 }
 
+void Return(void)
+{
+    Match(ReturnToken);
+    BooleanExpression();
+    EmitLn("leave");
+    EmitLn("ret");
+}
+
 //---------------------------------------------------------------
 void Statement(char* innermostLoopLabel)
 {
@@ -1205,6 +1290,9 @@ void Statement(char* innermostLoopLabel)
     else if (g_token == BreakToken) {
         Break(innermostLoopLabel);
     }
+    else if (g_token == ReturnToken) {
+        Return();
+    }
     else {
         Assignment();
     }
@@ -1217,12 +1305,16 @@ void Statements(char *innermostLoopLabel)
 {
     while (g_token == IfToken || g_token == WhileToken || 
            g_token == DoToken || g_token == BreakToken ||
-           g_token == IdentifierToken)
+           g_token == ReturnToken || g_token == IdentifierToken)
     {
         Statement(innermostLoopLabel);
     }
 }
 
+
+//---------------------------------------------------------------
+// local-declarations ::= {int <identifier> ['=' bool-expression] [';']}
+//---------------------------------------------------------------
 void LocalDeclarations(void)
 {
     g_localDeclarations = 0;
@@ -1232,6 +1324,18 @@ void LocalDeclarations(void)
         Match(IdentifierToken);
         RegisterParam(name);
         ++g_localDeclarations;
+
+/*
+ XXX Doesn't work currently as the function preamble must be output
+     before any stores to local variables 
+
+        // Optional assignment.
+        if (g_token == '=') {
+            AssignmentTail(name);
+        }
+*/
+
+        // Optional semicolon.
         if (g_token == ';') {
             Match(';');
         }
@@ -1255,6 +1359,7 @@ typedef enum {
 
 void FormalParam(void)
 {
+    if (g_token == IntToken) Match(IntToken);
     char *name = g_tokenValue;
     Match(IdentifierToken);
     RegisterParam(name);
@@ -1268,10 +1373,15 @@ void FunctionDecl(char *name, Type type)
     //FormalParameters();
     Match('(');
     if (g_token != ')') {
-        FormalParam();
-        while (g_token == ',') {
-            Match(',');
+        if (g_token == VoidToken) {
+            Match(VoidToken);
+        }
+        else {
             FormalParam();
+            while (g_token == ',') {
+                Match(',');
+                FormalParam();
+            }
         }
     }
     Match(')');
@@ -1342,14 +1452,49 @@ void Root(void)
     EmitGlobalVariableDefinitions();
 }
 
+char *ReadFile(char *filename)
+{
+    // Open file.
+    FILE *input = fopen(filename, "r");
+    if (input == NULL) {
+        fprintf(stderr, "cannot open file '%s'\n", filename);
+        exit(1);
+    }
+
+    // Get size of file.
+    struct stat stat;
+    int retcode = fstat(fileno(input), &stat);
+    if (retcode != 0) {
+        perror("fstat");
+        exit(1);
+    }
+    int size = stat.st_size;
+
+    // Slurp file into buf.
+    char *buf = GcMalloc(size + 1); // Include space for terminating '\0'.
+    int numChars = fread(buf, 1, size, input);
+    if (numChars != size) {
+        fprintf(stderr, "fread didn't read all characters\n");
+        exit(1);
+    }
+    buf[size] = '\0'; // Terminate string.
+
+    return buf;
+}
+
 // --------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-    if (argc != 2) {
-        fprintf(stderr, "usage: superc \"<expression>\"\n");
+    if (argc == 2) {
+        Init(ReadFile(argv[1]));
+    }
+    else if (argc == 3 && strcmp(argv[1], "-e") == 0) {
+        Init(argv[2]);
+    }
+    else {
+        fprintf(stderr, "usage: superc file | -e expression\n");
         exit(2);
     }
-    Init(argv[1]);
     Root();
 
     return 0;
