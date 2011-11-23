@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+void expression(){int b; int a; b = 9; a=8; }
+
 void FunctionWith1Local(void)
 {
     int a;

@@ -3,6 +3,7 @@
 foo1:
 	pushl	%ebp
 	movl	%esp, %ebp
+	subl	$0, %esp
 	movl	8(%ebp), %eax
 	movl	%eax, a
 	leave
@@ -13,6 +14,7 @@ foo1:
 foo2:
 	pushl	%ebp
 	movl	%esp, %ebp
+	subl	$0, %esp
 	movl	12(%ebp), %eax
 	pushl	%eax
 	movl	8(%ebp), %eax
@@ -27,6 +29,7 @@ foo2:
 expression:
 	pushl	%ebp
 	movl	%esp, %ebp
+	subl	$0, %esp
 	movl	$8, %eax
 	pushl	%eax
 	movl	$9, %eax

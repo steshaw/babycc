@@ -1,15 +1,15 @@
-/**
- * superc - Super C Compiler
- *
- * eax is used as the "accumulator" register
- * ebx is used as the "temporary" register (used to get store value from the
- *                                          expression stack)
- *
- * Need one register for swapping in div operator. (ebx)
- * Need one register for function calls.
- *
- * The rest could be used as a faster "stack".
- */
+//
+// superc - Super C Compiler
+//
+// eax is used as the "accumulator" register
+// ebx is used as the "temporary" register (used to get store value from the
+//     expression stack).
+//
+// Need one register for swapping in div operator. (ebx)
+// Need one register for function calls.
+//
+// The rest could be used as a faster "expression stack".
+//
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,12 +24,6 @@ typedef enum {
     WhileToken,
     DoToken,
     BreakToken,
-
-    /*
-    TrueToken,
-    FalseToken,
-    XXX these aren't keywords in C
-    */
 
     OrToken,
     AndToken,
@@ -57,7 +51,11 @@ static char globalTypes[256];   // XXX hard limit :-(
 // number of parameters only stored here for functions (not variables)
 static int globalNumParams[256];   // XXX hard limit :-(
 
-static int g_numParams = 0;
+// number of parameters and locals (XXX little bit weird)
+static int g_numParamsAndLocals = 0;
+static int g_localDeclarations = 0;
+// used to calculate offset
+static int g_base = 0;
 static char* g_paramNames[256]; // XXX hard limit :-(
 //static char parameterTypes[256];   // XXX currently all integer
 
@@ -309,9 +307,9 @@ PRIVATE int CalcParamOffset(int n, int totalParams)
 }
 
 //---------------------------------------------------------------
-PUBLIC void EmitLoadParam(int n, int totalParams)
+PUBLIC void EmitLoadParam(int n)
 {
-    int offset = CalcParamOffset(n, totalParams);
+    int offset = CalcParamOffset(n, g_base);
 
     char param[256]; // FIXME yuk
     sprintf(param, "%d(%%ebp)", offset);
@@ -319,9 +317,9 @@ PUBLIC void EmitLoadParam(int n, int totalParams)
 }
 
 //---------------------------------------------------------------
-PUBLIC void EmitStoreParam(int n, int totalParams)
+PUBLIC void EmitStoreParam(int n)
 {
-    int offset = CalcParamOffset(n, totalParams);
+    int offset = CalcParamOffset(n, g_base);
 
     char param[256]; // FIXME yuk
     sprintf(param, "%d(%%ebp)", offset);
@@ -329,7 +327,7 @@ PUBLIC void EmitStoreParam(int n, int totalParams)
 }
 
 //---------------------------------------------------------------
-PUBLIC void EmitFunctionPreamble(char *name)
+PUBLIC void EmitFunctionPreamble(char *name, int numLocals)
 {
     printf(".globl %s\n", name);
     printf("\t.type\t%s, @function\n", name);
@@ -338,6 +336,11 @@ PUBLIC void EmitFunctionPreamble(char *name)
     // function preamble
     EmitLn("pushl\t%ebp");
     EmitLn("movl\t%esp, %ebp");
+
+    char op[256];
+    sprintf(op, "subl\t$%d, %%esp", numLocals*4);
+    // XXX This should have a different value for different # locals.
+    EmitLn(op);
 }
 
 //---------------------------------------------------------------
@@ -452,7 +455,7 @@ int GlobalNameIndex(char *name)
 
 int ParamNameIndex(char *name)
 {
-    for (int i = 0; i < g_numParams; ++i) {
+    for (int i = 0; i < g_numParamsAndLocals; ++i) {
         if (strcmp(g_paramNames[i], name) == 0) return i;
         // XXX this could be inefficient - could replace with
         // XXX pointer equality if symbols are first "interned"
@@ -478,7 +481,7 @@ bool IsGlobalNameDefined(char *name)
 
 bool IsParamNameDefined(char *name)
 {
-    return IsNameDefined(name, g_paramNames, g_numParams);
+    return IsNameDefined(name, g_paramNames, g_numParamsAndLocals);
 }
 
 
@@ -543,9 +546,9 @@ void RegisterParam(char *name)
     }
 
     // register
-    g_paramNames[g_numParams] = name;
-    //g_paramTypes[g_numParams] = type;
-    ++g_numParams;
+    g_paramNames[g_numParamsAndLocals] = name;
+    //g_paramTypes[g_numParamsAndLocals] = type;
+    ++g_numParamsAndLocals;
 }
 
 
@@ -563,11 +566,6 @@ Keyword keywords[] = {
     DEF_KEYWORD("while", WhileToken),
     DEF_KEYWORD("do", DoToken),
     DEF_KEYWORD("break", BreakToken),
-    /* 
-    XXX not keywords in C
-    DEF_KEYWORD("true", TrueToken),
-    DEF_KEYWORD("false", FalseToken),
-    */
     DEF_KEYWORD("int", IntToken),
     DEF_KEYWORD("void", VoidToken),
 };
@@ -752,6 +750,10 @@ void Init(char *s)
     parseString = s;
     GetChar();
     Scan();
+
+    for (int i = 0; i < 256; ++i) {
+        g_paramNames[i] = "";
+    }
 }
 
 //===============================================================
@@ -814,7 +816,7 @@ void Identifier(void)
         }
         else {
             int index = ParamNameIndex(name);
-            EmitLoadParam(index, g_numParams);
+            EmitLoadParam(index);
         }
     }
 }
@@ -1099,10 +1101,17 @@ void Assignment(void)
 {
     char *name = g_tokenValue;
     Match(IdentifierToken);
-    CheckDefined(name);
+    bool isGlobal = CheckDefined(name);
     Match('=');
     BooleanExpression();
-    EmitStore(name);
+    // variable reference
+    if (isGlobal) {
+        EmitStore(name);
+    }
+    else {
+        int index = ParamNameIndex(name);
+        EmitStoreParam(index);
+    }
 }
 
 //---------------------------------------------------------------
@@ -1211,10 +1220,23 @@ void Statements(char *innermostLoopLabel)
     }
 }
 
+void LocalDeclarations(void)
+{
+    g_localDeclarations = 0;
+    while (g_token == IntToken) {
+        Match(IntToken);
+        char *name = g_tokenValue;
+        Match(IdentifierToken);
+        RegisterParam(name);
+        ++g_localDeclarations;
+    }
+}
+
 //---------------------------------------------------------------
 void Block(char *innermostLoopLabel)
 {
     Match('{');
+    LocalDeclarations();
     Statements(innermostLoopLabel);
     Match('}');
 }
@@ -1234,7 +1256,8 @@ void FormalParam(void)
 
 void FunctionDecl(char *name, Type type)
 {
-    g_numParams = 0; // clear number of parameters in global param table
+    // clear number of parameters in global param table
+    g_numParamsAndLocals = 0;
 
     //FormalParameters();
     Match('(');
@@ -1247,11 +1270,20 @@ void FunctionDecl(char *name, Type type)
     }
     Match(')');
 
-    // register before Block() for recursive function calls
-    RegisterGlobal(name, FunctionType, g_numParams);
+    g_base = g_numParamsAndLocals;
+    g_numParamsAndLocals += 2; // XXX may be wrong
 
-    EmitFunctionPreamble(name);
-    Block(NULL);
+    // register before Block() for recursive function calls
+    RegisterGlobal(name, FunctionType, g_base);
+
+    // XXX This is a modified copy of Block() right here.
+    // XXX It was necessary to delay EmitFunctionPreamble until
+    // XXX the number of local variable is known.
+    Match('{');
+    LocalDeclarations();
+    EmitFunctionPreamble(name, g_localDeclarations);
+    Statements(NULL);
+    Match('}');
     EmitFunctionPostamble(name);
     /*
     fprintf(stderr, "func %s(%d) : %s\n", name, g_numParams, 

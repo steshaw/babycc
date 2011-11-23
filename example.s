@@ -1,4 +1,16 @@
 	.file	"example.c"
+	.text
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$8, %esp
+	movl	$9, -4(%ebp)
+	movl	$8, -8(%ebp)
+	leave
+	ret
+	.size	expression, .-expression
 	.section	.rodata
 .LC0:
 	.string	"FunctionWith1Local: a = %d\n"
@@ -243,13 +255,13 @@ Or:
 	subl	$4, %esp
 	movl	$0, -4(%ebp)
 	cmpl	$0, 8(%ebp)
-	jne	.L17
+	jne	.L18
 	cmpl	$0, 12(%ebp)
-	jne	.L17
-	jmp	.L16
-.L17:
+	jne	.L18
+	jmp	.L17
+.L18:
 	movl	$1, -4(%ebp)
-.L16:
+.L17:
 	movl	-4(%ebp), %eax
 	leave
 	ret
@@ -262,11 +274,11 @@ And:
 	subl	$4, %esp
 	movl	$0, -4(%ebp)
 	cmpl	$0, 8(%ebp)
-	je	.L19
+	je	.L20
 	cmpl	$0, 12(%ebp)
-	je	.L19
+	je	.L20
 	movl	$1, -4(%ebp)
-.L19:
+.L20:
 	movl	-4(%ebp), %eax
 	leave
 	ret
@@ -315,14 +327,14 @@ If:
 	movl	%esp, %ebp
 	subl	$8, %esp
 	cmpl	$0, 8(%ebp)
-	je	.L24
+	je	.L25
 	movl	$.LC9, (%esp)
 	call	printf
-	jmp	.L23
-.L24:
+	jmp	.L24
+.L25:
 	movl	$.LC10, (%esp)
 	call	printf
-.L23:
+.L24:
 	leave
 	ret
 	.size	If, .-If

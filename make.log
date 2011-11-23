@@ -1,51 +1,1171 @@
 rm -f *.o superc
 cc -g -Wall --std=c99    superc.c   -o superc
 cc -g -Wall --std=c99   -c -o main.o main.c
+-------------------------------------------------------------------------
+EXPRESSION: void expression(){int a a=1 }
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$4, %esp
+	movl	$1, %eax
+	movl	%eax, -4(%ebp)
+	leave
+	ret
+	.size	expression, .-expression
+void expression(){int a a=1 } => 1
+-------------------------------------------------------------------------
+EXPRESSION: void expression(){int a int b a=1 b=2}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$8, %esp
+	movl	$1, %eax
+	movl	%eax, -4(%ebp)
+	movl	$2, %eax
+	movl	%eax, -8(%ebp)
+	leave
+	ret
+	.size	expression, .-expression
+void expression(){int a int b a=1 b=2} => 2
+-------------------------------------------------------------------------
+EXPRESSION: void expression(){int a int b int c a=1 b=2 c=3}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$12, %esp
+	movl	$1, %eax
+	movl	%eax, -4(%ebp)
+	movl	$2, %eax
+	movl	%eax, -8(%ebp)
+	movl	$3, %eax
+	movl	%eax, -12(%ebp)
+	leave
+	ret
+	.size	expression, .-expression
+void expression(){int a int b int c a=1 b=2 c=3} => 3
+-------------------------------------------------------------------------
+EXPRESSION: void expression(){int a int b int c int d a=1 b=2 c=3 d=4}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$16, %esp
+	movl	$1, %eax
+	movl	%eax, -4(%ebp)
+	movl	$2, %eax
+	movl	%eax, -8(%ebp)
+	movl	$3, %eax
+	movl	%eax, -12(%ebp)
+	movl	$4, %eax
+	movl	%eax, -16(%ebp)
+	leave
+	ret
+	.size	expression, .-expression
+void expression(){int a int b int c int d a=1 b=2 c=3 d=4} => 4
+-------------------------------------------------------------------------
+EXPRESSION: void expression(p1, p2) { int a int b int c int d a=1 b=2 c=3 d=4 p1=5 p2=6 }
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$16, %esp
+	movl	$1, %eax
+	movl	%eax, -4(%ebp)
+	movl	$2, %eax
+	movl	%eax, -8(%ebp)
+	movl	$3, %eax
+	movl	%eax, -12(%ebp)
+	movl	$4, %eax
+	movl	%eax, -16(%ebp)
+	movl	$5, %eax
+	movl	%eax, 12(%ebp)
+	movl	$6, %eax
+	movl	%eax, 8(%ebp)
+	leave
+	ret
+	.size	expression, .-expression
+void expression(p1, p2) {                int a                                        int b                                        int c                                        int d                                        a=1                                        b=2                                        c=3                                        d=4                                             p1=5                                             p2=6                                             } => 6
+-------------------------------------------------------------------------
+EXPRESSION: int a void main(){a}
+-------------------------------------------------------------------------
 expression 'int a void main(){a}' failed with:
 Error: '=' expected.
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=8+4}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$8, %eax
+	pushl	%eax
+	movl	$4, %eax
+	popl	%ebx
+	addl	%ebx,%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=8+4} => 12
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=8-4}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$8, %eax
+	pushl	%eax
+	movl	$4, %eax
+	popl	%ebx
+	subl	%ebx,%eax
+	negl	%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=8-4} => 4
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=2*3}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$2, %eax
+	pushl	%eax
+	movl	$3, %eax
+	popl	%ebx
+	imul	%ebx,%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=2*3} => 6
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=6/2}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$6, %eax
+	pushl	%eax
+	movl	$2, %eax
+	movl	%eax,%ebx
+	popl	%eax
+	cltd
+	idiv	%ebx,%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=6/2} => 3
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=2+8*3}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$2, %eax
+	pushl	%eax
+	movl	$8, %eax
+	pushl	%eax
+	movl	$3, %eax
+	popl	%ebx
+	imul	%ebx,%eax
+	popl	%ebx
+	addl	%ebx,%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=2+8*3} => 26
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=(2+8)*3}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$2, %eax
+	pushl	%eax
+	movl	$8, %eax
+	popl	%ebx
+	addl	%ebx,%eax
+	pushl	%eax
+	movl	$3, %eax
+	popl	%ebx
+	imul	%ebx,%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=(2+8)*3} => 30
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=2*(3+4)}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$2, %eax
+	pushl	%eax
+	movl	$3, %eax
+	pushl	%eax
+	movl	$4, %eax
+	popl	%ebx
+	addl	%ebx,%eax
+	popl	%ebx
+	imul	%ebx,%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=2*(3+4)} => 14
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=((3+4)+(5-6))/(1+2)}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$3, %eax
+	pushl	%eax
+	movl	$4, %eax
+	popl	%ebx
+	addl	%ebx,%eax
+	pushl	%eax
+	movl	$5, %eax
+	pushl	%eax
+	movl	$6, %eax
+	popl	%ebx
+	subl	%ebx,%eax
+	negl	%eax
+	popl	%ebx
+	addl	%ebx,%eax
+	pushl	%eax
+	movl	$1, %eax
+	pushl	%eax
+	movl	$2, %eax
+	popl	%ebx
+	addl	%ebx,%eax
+	movl	%eax,%ebx
+	popl	%eax
+	cltd
+	idiv	%ebx,%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=((3+4)+(5-6))/(1+2)} => 2
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=-1}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$-1, %eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=-1} => -1
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=-(5-7)}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$5, %eax
+	pushl	%eax
+	movl	$7, %eax
+	popl	%ebx
+	subl	%ebx,%eax
+	negl	%eax
+	negl	%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=-(5-7)} => 2
+-------------------------------------------------------------------------
+EXPRESSION: int n int a int b void expression(){n=a*b}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	a, %eax
+	pushl	%eax
+	movl	b, %eax
+	popl	%ebx
+	imul	%ebx,%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
+	.comm	a, 4,4
+	.comm	b, 4,4
 int n int a int b void expression(){n=a*b} => 0
+-------------------------------------------------------------------------
+EXPRESSION: int n int a int b void expression(){n=a*b-b}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	a, %eax
+	pushl	%eax
+	movl	b, %eax
+	popl	%ebx
+	imul	%ebx,%eax
+	pushl	%eax
+	movl	b, %eax
+	popl	%ebx
+	subl	%ebx,%eax
+	negl	%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
+	.comm	a, 4,4
+	.comm	b, 4,4
 int n int a int b void expression(){n=a*b-b} => 0
+-------------------------------------------------------------------------
+EXPRESSION: int n void f(){n=101} void expression(){n=2*f()}
+-------------------------------------------------------------------------
+.globl f
+	.type	f, @function
+f:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$101, %eax
+	movl	%eax, n
+	leave
+	ret
+	.size	f, .-f
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$2, %eax
+	pushl	%eax
+	call	f
+	popl	%ebx
+	imul	%ebx,%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void f(){n=101} void expression(){n=2*f()} => 202
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){if 1 {n=4}}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$1, %eax
+	cmpl	$0, %eax
+	je	.L1
+	movl	$4, %eax
+	movl	%eax, n
+.L1:
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){if 1 {n=4}} => 4
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){if 1 {n=4} n=5}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$1, %eax
+	cmpl	$0, %eax
+	je	.L1
+	movl	$4, %eax
+	movl	%eax, n
+.L1:
+	movl	$5, %eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){if 1 {n=4} n=5} => 5
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){if 1 n=4 else n=5}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$1, %eax
+	cmpl	$0, %eax
+	je	.L1
+	movl	$4, %eax
+	movl	%eax, n
+	jmp	.L2
+.L1:
+	movl	$5, %eax
+	movl	%eax, n
+.L2:
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){if 1 n=4 else n=5} => 4
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=10 while (n) { n = n - 1 }}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, n
+.L1:
+	movl	n, %eax
+	cmpl	$0, %eax
+	je	.L2
+	movl	n, %eax
+	pushl	%eax
+	movl	$1, %eax
+	popl	%ebx
+	subl	%ebx,%eax
+	negl	%eax
+	movl	%eax, n
+	jmp	.L1
+.L2:
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=10 while (n) { n = n - 1 }} => 0
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=10 do { n = n - 1 } while (n)}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, n
+.L1:
+	movl	n, %eax
+	pushl	%eax
+	movl	$1, %eax
+	popl	%ebx
+	subl	%ebx,%eax
+	negl	%eax
+	movl	%eax, n
+	movl	n, %eax
+	jne	.L1
+.L2:
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=10 do { n = n - 1 } while (n)} => 0
+-------------------------------------------------------------------------
+EXPRESSION: int a int b void expression(){a=1 break b=2}
+-------------------------------------------------------------------------
 expression 'int a int b void expression(){a=1 break b=2}' failed with:
 Error: break statement not within loop.
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=10 do { break } while (n)}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, n
+.L1:
+	jmp	.L2
+	movl	n, %eax
+	jne	.L1
+.L2:
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=10 do { break } while (n)} => 10
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=10 do { n=8 break } while (n)}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, n
+.L1:
+	movl	$8, %eax
+	movl	%eax, n
+	jmp	.L2
+	movl	n, %eax
+	jne	.L1
+.L2:
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=10 do { n=8 break } while (n)} => 8
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=10 while n { break } }
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, n
+.L1:
+	movl	n, %eax
+	cmpl	$0, %eax
+	je	.L2
+	jmp	.L2
+	jmp	.L1
+.L2:
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=10 while n { break } } => 10
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=10 while n { n=8 break } }
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, n
+.L1:
+	movl	n, %eax
+	cmpl	$0, %eax
+	je	.L2
+	movl	$8, %eax
+	movl	%eax, n
+	jmp	.L2
+	jmp	.L1
+.L2:
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=10 while n { n=8 break } } => 8
+-------------------------------------------------------------------------
+EXPRESSION: int a int b void expression(){a=5 b=-a}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$5, %eax
+	movl	%eax, a
+	movl	a, %eax
+	negl	%eax
+	movl	%eax, b
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
+	.comm	b, 4,4
 int a int b void expression(){a=5 b=-a} => -5
+-------------------------------------------------------------------------
+EXPRESSION: int n void expression(){n=-10}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$-10, %eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	n, 4,4
 int n void expression(){n=-10} => -10
+-------------------------------------------------------------------------
+EXPRESSION: int a int n void expression(){a=10 n = 5 - -a}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, a
+	movl	$5, %eax
+	pushl	%eax
+	movl	a, %eax
+	negl	%eax
+	popl	%ebx
+	subl	%ebx,%eax
+	negl	%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
+	.comm	n, 4,4
 int a int n void expression(){a=10 n = 5 - -a} => 15
+-------------------------------------------------------------------------
+EXPRESSION: int a int n void expression(){a=10 n = -5 - -a}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, a
+	movl	$-5, %eax
+	pushl	%eax
+	movl	a, %eax
+	negl	%eax
+	popl	%ebx
+	subl	%ebx,%eax
+	negl	%eax
+	movl	%eax, n
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
+	.comm	n, 4,4
 int a int n void expression(){a=10 n = -5 - -a} => 5
+-------------------------------------------------------------------------
+EXPRESSION: int a void expression(){a=0 || 0}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$0, %eax
+	pushl	%eax
+	movl	$0, %eax
+	popl	%ebx
+	cmpl	$0, %ebx
+	jne	.L1
+	cmpl	$0, %eax
+	jne	.L1
+	jmp	.L2
+.L1:
+	movl	$1, %eax
+.L2:
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
 int a void expression(){a=0 || 0} => 0
+-------------------------------------------------------------------------
+EXPRESSION: int a void expression(){a=0 || 2}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$0, %eax
+	pushl	%eax
+	movl	$2, %eax
+	popl	%ebx
+	cmpl	$0, %ebx
+	jne	.L1
+	cmpl	$0, %eax
+	jne	.L1
+	jmp	.L2
+.L1:
+	movl	$1, %eax
+.L2:
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
 int a void expression(){a=0 || 2} => 1
+-------------------------------------------------------------------------
+EXPRESSION: int a void expression(){a=1 || 0}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$1, %eax
+	pushl	%eax
+	movl	$0, %eax
+	popl	%ebx
+	cmpl	$0, %ebx
+	jne	.L1
+	cmpl	$0, %eax
+	jne	.L1
+	jmp	.L2
+.L1:
+	movl	$1, %eax
+.L2:
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
 int a void expression(){a=1 || 0} => 1
+-------------------------------------------------------------------------
+EXPRESSION: int a void expression(){a=10 || 20}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	pushl	%eax
+	movl	$20, %eax
+	popl	%ebx
+	cmpl	$0, %ebx
+	jne	.L1
+	cmpl	$0, %eax
+	jne	.L1
+	jmp	.L2
+.L1:
+	movl	$1, %eax
+.L2:
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
 int a void expression(){a=10 || 20} => 1
+-------------------------------------------------------------------------
+EXPRESSION: int a void expression(){a=0 && 0}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$0, %eax
+	pushl	%eax
+	movl	$0, %eax
+	popl	%ebx
+	cmpl	$0, %ebx
+	je	.L1
+	cmpl	$0, %eax
+	je	.L1
+	movl	$1, %eax
+	jmp	.L2
+.L1:
+	movl	$0, %eax
+.L2:
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
 int a void expression(){a=0 && 0} => 0
+-------------------------------------------------------------------------
+EXPRESSION: int a void expression(){a=0 && 99}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$0, %eax
+	pushl	%eax
+	movl	$99, %eax
+	popl	%ebx
+	cmpl	$0, %ebx
+	je	.L1
+	cmpl	$0, %eax
+	je	.L1
+	movl	$1, %eax
+	jmp	.L2
+.L1:
+	movl	$0, %eax
+.L2:
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
 int a void expression(){a=0 && 99} => 0
+-------------------------------------------------------------------------
+EXPRESSION: int a void expression(){a=101 && 0}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$101, %eax
+	pushl	%eax
+	movl	$0, %eax
+	popl	%ebx
+	cmpl	$0, %ebx
+	je	.L1
+	cmpl	$0, %eax
+	je	.L1
+	movl	$1, %eax
+	jmp	.L2
+.L1:
+	movl	$0, %eax
+.L2:
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
 int a void expression(){a=101 && 0} => 0
+-------------------------------------------------------------------------
+EXPRESSION: int a void expression(){a=88 && 78}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$88, %eax
+	pushl	%eax
+	movl	$78, %eax
+	popl	%ebx
+	cmpl	$0, %ebx
+	je	.L1
+	cmpl	$0, %eax
+	je	.L1
+	movl	$1, %eax
+	jmp	.L2
+.L1:
+	movl	$0, %eax
+.L2:
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
 int a void expression(){a=88 && 78} => 1
+-------------------------------------------------------------------------
+EXPRESSION: int a void expression(){a = !0}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$0, %eax
+	cmpl	$0, %eax
+	sete	%al
+	movzbl	%al, %eax
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
 int a void expression(){a = !0} => 1
+-------------------------------------------------------------------------
+EXPRESSION: int a void expression(){a = !99}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$99, %eax
+	cmpl	$0, %eax
+	sete	%al
+	movzbl	%al, %eax
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
 int a void expression(){a = !99} => 0
+-------------------------------------------------------------------------
+EXPRESSION: int ifile void expression(){ifile = 1}
+-------------------------------------------------------------------------
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$1, %eax
+	movl	%eax, ifile
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	ifile, 4,4
 int ifile void expression(){ifile = 1} => 1
+-------------------------------------------------------------------------
+EXPRESSION: int i int foo(){i=10} void expression(){i=foo()}
+-------------------------------------------------------------------------
+.globl foo
+	.type	foo, @function
+foo:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, i
+	leave
+	ret
+	.size	foo, .-foo
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	call	foo
+	movl	%eax, i
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	i, 4,4
 int i int foo(){i=10} void expression(){i=foo()} => 10
+-------------------------------------------------------------------------
+EXPRESSION: int t int foo(){t=10} int expression(argc, argv) {t=foo()}
+-------------------------------------------------------------------------
+.globl foo
+	.type	foo, @function
+foo:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, t
+	leave
+	ret
+	.size	foo, .-foo
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	call	foo
+	movl	%eax, t
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	t, 4,4
 int t int foo(){t=10} int expression(argc, argv) {t=foo()} => 10
+-------------------------------------------------------------------------
+EXPRESSION: int t int foo(a){t=10} int expression(argc, argv) {t=foo(1)}
+-------------------------------------------------------------------------
+.globl foo
+	.type	foo, @function
+foo:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$10, %eax
+	movl	%eax, t
+	leave
+	ret
+	.size	foo, .-foo
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$1, %eax
+	pushl	%eax
+	call	foo
+	movl	%eax, t
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	t, 4,4
 int t int foo(a){t=10} int expression(argc, argv) {t=foo(1)} => 10
+-------------------------------------------------------------------------
+EXPRESSION: int t int foo(a){t=10} int expression(argc, argv) { t=foo(1,2) }
+-------------------------------------------------------------------------
 expression 'int t int foo(a){t=10}                     int expression(argc, argv) {               t=foo(1,2)                             }' failed with:
 Error: attempt call with incorrect number of arguments.
+-------------------------------------------------------------------------
+EXPRESSION: int a int b int foo(n) {a=n}void expression(){b = foo(9) a=a }
+-------------------------------------------------------------------------
+.globl foo
+	.type	foo, @function
+foo:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	8(%ebp), %eax
+	movl	%eax, a
+	leave
+	ret
+	.size	foo, .-foo
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$9, %eax
+	pushl	%eax
+	call	foo
+	movl	%eax, b
+	movl	a, %eax
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
+	.comm	b, 4,4
 int a int b int foo(n) {a=n}void expression(){b = foo(9) a=a } => 9
+-------------------------------------------------------------------------
+EXPRESSION: int a int b int foo1(n,m) { a = m } int foo2(n,m) { b=foo1(n,m) } void expression() { b = foo1(8,9) b = foo2(9,8) a = a }
+-------------------------------------------------------------------------
+.globl foo1
+	.type	foo1, @function
+foo1:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	8(%ebp), %eax
+	movl	%eax, a
+	leave
+	ret
+	.size	foo1, .-foo1
+.globl foo2
+	.type	foo2, @function
+foo2:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	12(%ebp), %eax
+	pushl	%eax
+	movl	8(%ebp), %eax
+	pushl	%eax
+	call	foo1
+	movl	%eax, b
+	leave
+	ret
+	.size	foo2, .-foo2
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$0, %esp
+	movl	$8, %eax
+	pushl	%eax
+	movl	$9, %eax
+	pushl	%eax
+	call	foo1
+	movl	%eax, b
+	movl	$9, %eax
+	pushl	%eax
+	movl	$8, %eax
+	pushl	%eax
+	call	foo2
+	movl	%eax, b
+	movl	a, %eax
+	movl	%eax, a
+	leave
+	ret
+	.size	expression, .-expression
+	.comm	a, 4,4
+	.comm	b, 4,4
 int a                                      int b                                      int foo1(n,m) {                            a = m                                  }                                          int foo2(n,m) {                            b=foo1(n,m)                            }                                          void expression() {                        b = foo1(8,9)                          b = foo2(9,8)                          a = a                                  } => 8

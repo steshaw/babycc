@@ -908,6 +908,8 @@ extern void funlockfile (FILE *__stream) ;
 
 # 2 "example.c" 2
 
+void expression(){int b; int a; b = 9; a=8; }
+
 void FunctionWith1Local(void)
 {
     int a;

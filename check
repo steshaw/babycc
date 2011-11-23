@@ -8,6 +8,9 @@ fi
 expression=$1
 expected=$2
 
+echo -------------------------------------------------------------------------
+echo EXPRESSION: $expression
+echo -------------------------------------------------------------------------
 superc "$expression" >expression.s 2>superc.out
 if [ $? -ne 0 ]; then
     echo "expression '$expression' failed with:"
@@ -18,7 +21,7 @@ if [ $? -ne 0 ]; then
     fi
     exit 0
 fi
-#cat expression.s
+cat expression.s
 gcc expression.s main.o -o expression
 if [ $? -ne 0 ]; then
     echo "assembler failed on expression '$expression'"
