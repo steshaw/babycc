@@ -3,8 +3,12 @@ CFLAGS=-g -Wall --std=c99
 .PHONY: all
 all: superc
 
-example.s: example.c
+example.o: example.c
 	gcc -Wall --save-temps -c example.c
+
+example.s: example.o
+
+example: example.o
 
 .PHONY: check
 check: all main.o
@@ -38,20 +42,21 @@ check: all main.o
 	@check "int a int n void expression(){a=10 n = 5 - -a}" 15
 	@check "int a int n void expression(){a=10 n = -5 - -a}" 5
 
-	@check "int a void expression(){a=false || false}" 0
-	@check "int a void expression(){a=false || true}" 1
-	@check "int a void expression(){a=true || false}" 1
-	@check "int a void expression(){a=true || true}" 1
+	@check "int a void expression(){a=0 || 0}" 0
+	@check "int a void expression(){a=0 || 2}" 1
+	@check "int a void expression(){a=1 || 0}" 1
+	@check "int a void expression(){a=10 || 20}" 1
 
-	@check "int a void expression(){a=false && false}" 0
-	@check "int a void expression(){a=false && true}" 0
-	@check "int a void expression(){a=true && false}" 0
-	@check "int a void expression(){a=true && true}" 1
+	@check "int a void expression(){a=0 && 0}" 0
+	@check "int a void expression(){a=0 && 99}" 0
+	@check "int a void expression(){a=101 && 0}" 0
+	@check "int a void expression(){a=88 && 78}" 1
 
-	@check "int a void expression(){a = !false}" 1
-	@check "int a void expression(){a = !true}" 0
+	@check "int a void expression(){a = !0}" 1
+	@check "int a void expression(){a = !99}" 0
 
 	@check "int ifile void expression(){ifile = 1}" 1
+	@check 'int i int foo(){i=10} void expression(){i=foo()}' 10
 
 .PHONY: clean
 clean:

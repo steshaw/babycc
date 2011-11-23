@@ -175,5 +175,31 @@ Call:
 	leave
 	ret
 	.size	Call, .-Call
+	.section	.rodata
+.LC3:
+	.string	"%d\n"
+	.text
+.globl main
+	.type	main, @function
+main:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$8, %esp
+	andl	$-16, %esp
+	movl	$0, %eax
+	subl	%eax, %esp
+	movl	$1, 4(%esp)
+	movl	$.LC3, (%esp)
+	call	printf
+	movl	$78, 4(%esp)
+	movl	$88, (%esp)
+	call	Or
+	movl	%eax, 4(%esp)
+	movl	$.LC3, (%esp)
+	call	printf
+	movl	$0, %eax
+	leave
+	ret
+	.size	main, .-main
 	.section	.note.GNU-stack,"",@progbits
 	.ident	"GCC: (GNU) 3.3.3 (Debian 20040401)"

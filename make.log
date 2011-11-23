@@ -31,14 +31,15 @@ int a int b void expression(){a=5 b=-a} => -5
 int n void expression(){n=-10} => -10
 int a int n void expression(){a=10 n = 5 - -a} => 15
 int a int n void expression(){a=10 n = -5 - -a} => 5
-int a void expression(){a=false || false} => 0
-int a void expression(){a=false || true} => 1
-int a void expression(){a=true || false} => 1
-int a void expression(){a=true || true} => 1
-int a void expression(){a=false && false} => 0
-int a void expression(){a=false && true} => 0
-int a void expression(){a=true && false} => 0
-int a void expression(){a=true && true} => 1
-int a void expression(){a = !false} => 1
-int a void expression(){a = !true} => 0
+int a void expression(){a=0 || 0} => 0
+int a void expression(){a=0 || 2} => 1
+int a void expression(){a=1 || 0} => 1
+int a void expression(){a=10 || 20} => 1
+int a void expression(){a=0 && 0} => 0
+int a void expression(){a=0 && 99} => 0
+int a void expression(){a=101 && 0} => 0
+int a void expression(){a=88 && 78} => 1
+int a void expression(){a = !0} => 1
+int a void expression(){a = !99} => 0
 int ifile void expression(){ifile = 1} => 1
+int i int foo(){i=10} void expression(){i=foo()} => 10

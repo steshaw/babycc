@@ -1,7 +1,4 @@
 
-o Perhaps revisit tutor9 for some ideas about C function and data
-  declarations.
-
 o See how my code matches with tutor11 (Tiny 1.1). Code up routines
   for abstracting the code emission and providing a point for
   target machine porting (It will feel alot like John's dcode...). 
@@ -22,3 +19,8 @@ o Tree-structured parsers and intermediate languages
 
 o Optimization
 
+
+
+o Boolean representation. There is no choice for C: false is 0 and
+  true is non-zero and usually 1. A better choice may be 0 for false
+  and -1 for true since bitwise not of -1 or 0 (and vice versa).

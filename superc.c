@@ -10,14 +10,12 @@
  * The rest could be used as a faster "stack".
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <assert.h>
-
 
 typedef enum {
     IfToken = 256, // Start after the ascii characters 0-255
@@ -26,8 +24,11 @@ typedef enum {
     DoToken,
     BreakToken,
 
+    /*
     TrueToken,
     FalseToken,
+    XXX these aren't keywords in C
+    */
 
     OrToken,
     AndToken,
@@ -41,8 +42,6 @@ typedef enum {
     IntToken,
     VoidToken,
 } Token;
-
-
 
 //---------------------------------------------------------------
 //  Variable Declarations
@@ -135,6 +134,195 @@ void EmitOp2(char *instruction, char *p1, char *p2)
     Emit(op);
 }
 
+// --------------------------------------------------------------
+/// clear the accumulator
+// --------------------------------------------------------------
+void EmitClear(void)
+{
+    // XXX Is there a cheaper way to load zero?
+    // XXX i.e. Something like CLR on 68000?
+    EmitLn("movl\t$0, %eax");
+}
+
+void EmitNegate(void)
+{
+    EmitLn("negl\t%eax");
+}
+
+void EmitNot(void)
+{
+    EmitLn("cmpl\t$0, %eax");
+    EmitLn("sete\t%al");
+    EmitLn("movzbl\t%al, %eax"); // XXX This isn't the movx instruction.
+                                 // XXX What is it?
+                                 // XXX Can't find it in the Intel manual.
+}
+
+void EmitLoadConst(char *num)
+{
+    char constant[256]; // FIXME yuk
+    sprintf(constant, "$%s", num);
+    EmitOp2("movl", constant, "%eax");
+}
+
+void EmitLoadTrue()
+{
+    EmitLoadConst("1"); // XXX could be a faster way of loading 1?
+}
+
+void EmitLoadVar(char *name)
+{
+    EmitOp2("movl", name, "%eax");
+}
+
+void EmitPush(void)
+{
+    EmitLn("pushl\t%eax");
+}
+
+void EmitPopAdd(void)
+{
+    EmitLn("popl\t%ebx");
+    EmitLn("addl\t%ebx,%eax");
+}
+
+void EmitPopSub(void)
+{
+    EmitLn("popl\t%ebx");
+    EmitLn("subl\t%ebx,%eax");
+    EmitLn("negl\t%eax");
+}
+
+void EmitPopMul(void)
+{
+    EmitLn("popl\t%ebx");
+    EmitLn("imul\t%ebx,%eax");
+}
+
+void EmitPopDiv(void)
+{
+    EmitLn("movl\t%eax,%ebx");
+    EmitLn("popl\t%eax");
+    EmitLn("cltd");
+    EmitLn("idiv\t%ebx,%eax");
+}
+
+void EmitPopBranchTrue(char *label)
+{
+    EmitLn("popl\t%ebx");  // pop value from stack into temp
+    EmitLn("cmpl\t$0, %ebx");
+    EmitOp1("jne", label);
+}
+
+void EmitPopBranchFalse(char *label)
+{
+    EmitLn("popl\t%ebx");  // pop value from stack into temp
+    EmitLn("cmpl\t$0, %ebx");
+    EmitOp1("je", label);
+}
+
+void EmitBranchFalse(char *label)
+{
+    EmitLn("cmpl\t$0, %eax");
+    EmitOp1("je", label);
+}
+
+void EmitBranchTrue(char *label)
+{
+    EmitOp2("cmpl", "$0", "%eax");
+    EmitOp1("jne", label);
+}
+
+void EmitBranch(char *label)
+{
+    EmitOp1("jmp", label);
+}
+
+#define PRIVATE
+#define PUBLIC
+
+PRIVATE void EmitRelationalOperator(char *setInstruction)
+{
+    EmitLn("popl\t%ebx");
+    EmitLn("cmpl\t%ebx, %eax");
+    EmitOp1(setInstruction, "al");
+    EmitLn("movzbl\t%al, %eax");
+}
+
+//---------------------------------------------------------------
+PUBLIC void EmitEquals(void)
+{
+    EmitRelationalOperator("sete");
+}
+
+//---------------------------------------------------------------
+PUBLIC void EmitNotEquals(void)
+{
+    EmitRelationalOperator("setne");
+}
+
+//---------------------------------------------------------------
+PUBLIC void EmitLessThan(void)
+{
+    EmitRelationalOperator("setl");
+}
+
+//---------------------------------------------------------------
+PUBLIC void EmitGreaterThan(void)
+{
+    EmitRelationalOperator("setg");
+}
+
+PUBLIC void EmitStore(char *var)
+{
+    EmitOp2("movl", "%eax", var);
+}
+
+PUBLIC void EmitCall(char *name)
+{
+    EmitOp1("call", name);
+}
+
+//---------------------------------------------------------------
+PUBLIC void EmitFunctionPreamble(char *name)
+{
+    printf(".globl %s\n", name);
+    printf("\t.type\t%s, @function\n", name);
+    printf("%s:\n", name);
+
+    // function preamble
+    EmitLn("pushl\t%ebp");
+    EmitLn("movl\t%esp, %ebp");
+}
+
+//---------------------------------------------------------------
+PUBLIC void EmitFunctionPostamble(char *name)
+{
+    EmitLn("popl\t%ebp");
+    EmitLn("ret");
+    {
+        char op[256];
+        sprintf(op, ".size\t%s, .-%s", name, name);
+        EmitLn(op);
+    }
+
+}
+
+typedef enum {
+    VariableType,
+    FunctionType,
+} NameType;
+
+//---------------------------------------------------------------
+PUBLIC void EmitGlobalVariableDefinitions(void)
+{
+    for (int i = 0; i < numGlobals; ++i) {
+        if (globalTypes[i] == VariableType) {
+            EmitOp2(".comm", globalNames[i], "4,4");
+        }
+    }
+}
+
 //===============================================================
 // Lexer
 //===============================================================
@@ -183,6 +371,7 @@ void Abort(char *s)
 void Expected(char *s) __attribute__ ((noreturn));
 void Expected(char *s)
 {
+    //fprintf(stderr, "current token = '%s' (%c)\n", g_tokenValue, g_token);
     const char *e = " expected";
     char *newString = GcMalloc(strlen(s) + strlen(e) + 1);
     strcpy(newString, s);
@@ -223,11 +412,6 @@ bool IsNameDefined(char *name)
     }
     return false;
 }
-
-typedef enum {
-    VariableType,
-    FunctionType,
-} NameType;
 
 void CheckDefined(char *name)
 {
@@ -285,8 +469,11 @@ Keyword keywords[] = {
     DEF_KEYWORD("while", WhileToken),
     DEF_KEYWORD("do", DoToken),
     DEF_KEYWORD("break", BreakToken),
+    /* 
+    XXX not keywords in C
     DEF_KEYWORD("true", TrueToken),
     DEF_KEYWORD("false", FalseToken),
+    */
     DEF_KEYWORD("int", IntToken),
     DEF_KEYWORD("void", VoidToken),
 };
@@ -320,11 +507,6 @@ Keyword operators[] = {
     DEF_KEYWORD("=", '='),
     DEF_KEYWORD("!", '!'),
 };
-
-void LookupOperator(char *s)
-{
-}
-
 
 bool IsOp()
 {
@@ -374,13 +556,14 @@ void GetName(void)
 {
     if (!isalpha(lookahead)) Expected("Name");
 
-    char name[256];
+    char name[256]; // FIXME
     int i = 0;
 
-    while (isalnum(lookahead)) {
+    do {
        name[i++] = lookahead;
        GetChar();
     }
+    while (isalnum(lookahead));
     name[i++] = '\0';
 
     // heap allocate the result
@@ -402,13 +585,14 @@ void GetNum(void)
 {
     if (!isdigit(lookahead)) Expected("Integer");
 
-    char value[256]; // XXX hard limit
+    char value[256]; // FIXME hard limit + no-bounds checking
     int i = 0;
 
-    while (isdigit(lookahead)) {
+    do {
        value[i++] = lookahead;
        GetChar();
     }
+    while (isdigit(lookahead));
     value [i++] = '\0';
 
     // heap allocate the result
@@ -467,25 +651,6 @@ void Match(int token)
     }
 }
 
-static bool IsBoolean(int token)
-{
-    return token == TrueToken || token == FalseToken;
-}
-
-// --------------------------------------------------------------
-static bool GetBoolean()
-{
-    if (g_token == TrueToken) {
-        return true;
-    }
-    else if (g_token == FalseToken) {
-        return false;
-    }
-    else {
-        Expected("Boolean literal");
-    }
-}
-
 // --------------------------------------------------------------
 //  Initialize
 // --------------------------------------------------------------
@@ -509,14 +674,13 @@ void Identifier(void)
         Match('(');
         //Expression(); // XXX not doing parameters yet
         CheckDefined(name);
-        EmitOp1("call", name);
+        EmitCall(name);
         Match(')');
     }
     else {
         // variable reference
-        EmitOp2("movl", name, "%eax");
-        //RegisterGlobal(name);
         CheckDefined(name);
+        EmitLoadVar(name);
     }
 }
 
@@ -530,7 +694,7 @@ void Factor(void)
     void Expression(void);
 
     if (g_token == '(') {
-        Match('(');
+        Match('('); // could be Scan();
         Expression();
         Match(')');
     }
@@ -538,9 +702,7 @@ void Factor(void)
         Identifier();
     }
     else if (g_token == NumberToken) {
-        char num[100];
-        sprintf(num, "$%s", g_tokenValue);
-        EmitOp2("movl", num, "%eax");
+        EmitLoadConst(g_tokenValue);
         Match(NumberToken);
     }
     else {
@@ -563,7 +725,7 @@ void SignedFactor(void)
         }
         else {
             Factor();
-            EmitLn("negl %eax");
+            EmitNegate();
         }
     }
     else Factor();
@@ -574,8 +736,7 @@ void Multiply(void)
 {
     Match('*');
     Factor();
-    EmitLn("popl\t%ebx");
-    EmitLn("imul\t%ebx,%eax");
+    EmitPopMul();
 }
 
 //---------------------------------------------------------------
@@ -583,10 +744,7 @@ void Divide(void)
 {
     Match('/');
     Factor();
-    EmitLn("movl\t%eax,%ebx");
-    EmitLn("popl\t%eax");
-    EmitLn("cltd");
-    EmitLn("idiv\t%ebx,%eax");
+    EmitPopDiv();
 }
 
 //---------------------------------------------------------------
@@ -596,7 +754,7 @@ void Term(void)
 {
     SignedFactor();
     while (g_token == '*' || g_token == '/') {
-        EmitLn("pushl\t%eax");
+        EmitPush();
         switch (g_token) {
             case '*': Multiply(); break;
             case '/': Divide(); break;
@@ -613,8 +771,7 @@ void Add(void)
 {
     Match('+');
     Term();
-    EmitLn("popl\t%ebx");
-    EmitLn("addl\t%ebx,%eax");
+    EmitPopAdd();
 }
 
 //---------------------------------------------------------------
@@ -624,9 +781,7 @@ void Subtract(void)
 {
     Match('-');
     Term();
-    EmitLn("popl\t%ebx");
-    EmitLn("subl\t%ebx,%eax");
-    EmitLn("negl\t%eax");
+    EmitPopSub();
 }
 
 //---------------------------------------------------------------
@@ -643,7 +798,7 @@ void Expression(void)
     Term();
 
     while (IsAddOp(g_token)) {
-        EmitLn("pushl\t%eax");
+        EmitPush();
         switch (g_token) {
             case '+': Add(); break;
             case '-': Subtract(); break;
@@ -667,19 +822,15 @@ void Or(void)
     char *trueLabel = NewLabel();
     char *endLabel = NewLabel();
 
-    // compare first false/zero
-    EmitLn("popl\t%ebx");  // pop value from stack into temp
-    EmitLn("cmpl\t$0, %ebx");
-    EmitOp1("jne", trueLabel);
+    EmitPopBranchTrue(trueLabel); // compare top-of-stack
+    EmitBranchTrue(trueLabel);    // compare accumulator
 
-    // compare second with false/zero
-    EmitLn("cmpl\t$0, %eax");
-    EmitOp1("jne", trueLabel);
-    EmitOp1("jmp", endLabel);
+    // If both values were false then skip to end as the accumulator 
+    // already holds the false value.
+    EmitBranch(endLabel);
 
-    // load 1/true
     EmitLabel(trueLabel);
-    EmitLn("movl\t$1, %eax");
+    EmitLoadTrue();
 
     EmitLabel(endLabel);
 }
@@ -698,39 +849,37 @@ static bool IsRelOp(Token token)
     }
 }
 
+typedef void (*Emitter)(void);
 //---------------------------------------------------------------
-void RelationalOperator(Token token, char *setInstruction)
+void RelationalOperator(Token token, Emitter emitter)
 {
     Match(token);
     Expression();
-    EmitLn("popl\t%ebx");
-    EmitLn("cmpl\t%ebx, %eax");
-    EmitOp1(setInstruction, "al");
-    EmitLn("movzbl\t%al, %eax");
+    emitter();
 }
 
 //---------------------------------------------------------------
 void Equals(void)
 {
-    RelationalOperator(EqualsToken, "sete");
+    RelationalOperator(EqualsToken, EmitEquals);
 }
 
 //---------------------------------------------------------------
 void NotEquals(void)
 {
-    RelationalOperator(NotEqualsToken, "setne");
+    RelationalOperator(NotEqualsToken, EmitNotEquals);
 }
 
 //---------------------------------------------------------------
 void LessThan(void)
 {
-    RelationalOperator('<', "setl");
+    RelationalOperator('<', EmitLessThan);
 }
 
 //---------------------------------------------------------------
 void GreaterThan(void)
 {
-    RelationalOperator('>', "setg");
+    RelationalOperator('>', EmitGreaterThan);
 }
 
 //---------------------------------------------------------------
@@ -740,7 +889,7 @@ static void Relation(void)
 {
     Expression();
     if (IsRelOp(g_token)) {
-        EmitLn("push\t%eax");
+        EmitPush();
         switch (g_token) {
             case EqualsToken: Equals(); break;
             case NotEqualsToken: NotEquals(); break;
@@ -753,34 +902,52 @@ static void Relation(void)
 }
 
 //---------------------------------------------------------------
+// Probably should remove this - it provides true and false
+// constants. Not needed for C.
+//---------------------------------------------------------------
+/*
+static bool GetBoolean()
+{
+    if (g_token == TrueToken) {
+        return true;
+    }
+    else if (g_token == FalseToken) {
+        return false;
+    }
+    else {
+        Expected("Boolean literal");
+    }
+}
+static bool IsBoolean(int token)
+{
+    return token == TrueToken || token == FalseToken;
+}
 static void BooleanFactor(void)
 {
     if (IsBoolean(g_token)) {
         if (GetBoolean()) {
             Match(TrueToken);
-            EmitLn("movl\t$1, %eax");// could use -1 and then bitwize not is 0
+            EmitLoadTrue();
         }
         else {
             Match(FalseToken);
-            // XXX Is there a cheaper way to load zero?
-            // XXX i.e. Something like CLR on 68000?
-            EmitLn("movl\t$0, %eax"); 
+            EmitClear();
         }
     }
     else Relation();
 }
+*/
 
+//---------------------------------------------------------------
 static void NotFactor(void)
 {
     if (g_token == '!') {
         Match('!');
-        BooleanFactor();
+        Relation(); // was BooleanFactor();
 
-        EmitLn("cmpl\t$0, %eax");
-	EmitLn("sete\t%al");
-	EmitLn("movzbl\t%al, %eax"); // XXX is this the movzx instruction?
+        EmitNot();
     }
-    else BooleanFactor();
+    else Relation();// was else BooleanFactor();
 }
 
 //---------------------------------------------------------------
@@ -795,37 +962,37 @@ void And(void)
     char *endLabel = NewLabel();
 
     // compare first false/zero
-    EmitLn("popl\t%ebx");  // pop value from stack into temp
-    EmitLn("cmpl\t$0, %ebx");
-    EmitOp1("je", falseLabel);
+    EmitPopBranchFalse(falseLabel);
 
     // compare second with false/zero
-    EmitLn("cmpl\t$0, %eax");
-    EmitOp1("je", falseLabel);
+    EmitBranchFalse(falseLabel);
+    EmitLoadConst("1");
     EmitOp1("jmp", endLabel);
 
     // load 0/false
     EmitLabel(falseLabel);
-    EmitLn("movl\t$0, %eax");
+    EmitClear();
 
     EmitLabel(endLabel);
 }
 
+//---------------------------------------------------------------
 void BooleanTerm(void)
 {
     NotFactor();
     while (g_token == AndToken) {
-        EmitLn("pushl\t%eax");
+        EmitPush();
         And();
     }
 }
+
 
 //---------------------------------------------------------------
 void BooleanExpression(void)
 {
     BooleanTerm();
     while (g_token == OrToken) {
-        EmitLn("push\t%eax");
+        EmitPush();
         Or();
     }
 }
@@ -835,16 +1002,10 @@ void Assignment(void)
 {
     char *name = g_tokenValue;
     Match(IdentifierToken);
-    //RegisterGlobal(name);
     CheckDefined(name);
     Match('=');
     BooleanExpression();
-    /*
-    char op[256];
-    sprintf(op, "movl %%eax, %s", name);
-    EmitLn(op);
-    */
-    EmitOp2("movl", "%eax", name);
+    EmitStore(name);
 }
 
 //---------------------------------------------------------------
@@ -858,13 +1019,14 @@ void If(char *innermostLoopLabel)
     BooleanExpression();
 
     // skip if condition not true
-    EmitOp1("je", label1);
+    EmitBranchFalse(label1);
+//    EmitOp1("je", label1); // FIXME the BranchFalse does cmpl too!!!!!!
     Statement(innermostLoopLabel);
 
     if (g_token == ElseToken) {
         Match(ElseToken);
         label2 = NewLabel();
-        EmitOp1("jmp", label2);
+        EmitBranch(label2);
         EmitLabel(label1);
         Statement(innermostLoopLabel);
     }
@@ -883,10 +1045,11 @@ void While()
     BooleanExpression();
 
     char *endLabel = NewLabel();
-    // terminate loop if condition is not true (i.e. equals zero)
-    EmitOp1("je", endLabel);
+    // terminate loop if condition is false
+    EmitBranchFalse(endLabel); 
+    // FIXME EmitBranchFalse does cmpl!!!!!!!!!!!!!!!!!!!
     Statement(endLabel);
-    EmitOp1("jmp", conditionLabel);
+    EmitBranch(conditionLabel);
     EmitLabel(endLabel);
 }
 
@@ -960,41 +1123,8 @@ void Block(char *innermostLoopLabel)
 }
 
 //---------------------------------------------------------------
-void EmitFunctionPreamble(char *name)
-{
-    printf(".globl %s\n", name);
-    printf("\t.type\t%s, @function\n", name);
-    printf("%s:\n", name);
-
-    // function preamble
-    EmitLn("pushl\t%ebp");
-    EmitLn("movl\t%esp, %ebp");
-}
-
-//---------------------------------------------------------------
-void EmitFunctionPostamble(char *name)
-{
-    EmitLn("popl\t%ebp");
-    EmitLn("ret");
-    {
-        char op[256];
-        sprintf(op, ".size\t%s, .-%s", name, name);
-        EmitLn(op);
-    }
-
-}
-
-//---------------------------------------------------------------
-void EmitGlobalVariableDefinitions(void)
-{
-    for (int i = 0; i < numGlobals; ++i) {
-        if (globalTypes[i] == VariableType) {
-            EmitOp2(".comm", globalNames[i], "4,4");
-        }
-    }
-}
-
-//---------------------------------------------------------------
+/*
+ XXX not used any more
 void ExpressionFunction(void)
 {
     EmitFunctionPreamble("expression");
@@ -1011,7 +1141,7 @@ void ExpressionFunction(void)
 
     Match('\0'); // end of stream
 }
-
+*/
 
 typedef enum {
     Int,

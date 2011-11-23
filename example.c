@@ -67,3 +67,12 @@ void Call(void)
 {
     Callee();
 }
+
+int main(void)
+{
+    printf("%d\n", 88 || 78);
+    printf("%d\n", Or(88,78));
+
+    return 0;
+}
+
