@@ -908,6 +908,34 @@ extern void funlockfile (FILE *__stream) ;
 
 # 2 "example.c" 2
 
+void FunctionWith1Local(void)
+{
+    int a;
+    printf("FunctionWith1Local: a = %d\n", a);
+}
+
+void FunctionWith2Local(void)
+{
+    int a;
+    int b;
+    printf("FunctionWith2Local: a = %d\n", a);
+    printf("FunctionWith2Local: b = %d\n", b);
+}
+
+void FunctionWithxLocals(void)
+{
+    int a = 10;
+    int b = 20;
+    int c = 30;
+    int d = 40;
+    int e = 50;
+    printf("FunctionWith3Local: a = %d\n", a);
+    printf("FunctionWith3Local: b = %d\n", b);
+    printf("FunctionWith3Local: c = %d\n", c);
+    printf("FunctionWith3Local: d = %d\n", d);
+    printf("FunctionWith3Local: e = %d\n", e);
+}
+
 void Func1(int a)
 {
     printf("%d\n", a);
@@ -1013,6 +1041,10 @@ int main(void)
 {
     printf("%d\n", 88 || 78);
     printf("%d\n", Or(88,78));
+
+    FunctionWith1Local();
+    FunctionWith2Local();
+    FunctionWithxLocals();
 
     return 0;
 }

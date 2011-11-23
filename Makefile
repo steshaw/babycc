@@ -60,18 +60,26 @@ check: all main.o
 
 	@check "int t int foo(){t=10} int expression(argc, argv) {t=foo()}" 10
 	@check "int t int foo(a){t=10} int expression(argc, argv) {t=foo(1)}" 10
-	@check "int t int foo(a){t=10} int expression(argc, argv) {t=foo(1,2)}" \
-	    "Error: attempt call with incorrect number of arguments."
+
+	@check "int t int foo(a){t=10}                    \
+	        int expression(argc, argv) {              \
+		    t=foo(1,2)                            \
+		}" "Error: attempt call with incorrect number of arguments."
+
 	@check "int a int b int foo(n) {a=n}void expression(){b = foo(9) a=a }" 9
 	@check "int a                                     \
 	        int b                                     \
-		int foo(n,m) {                            \
+		int foo1(n,m) {                           \
 		    a = m                                 \
 		}                                         \
+		int foo2(n,m) {                           \
+		    b=foo1(n,m)                           \
+		}                                         \
 		void expression() {                       \
-		    b = foo(8,9)                          \
+		    b = foo1(8,9)                         \
+		    b = foo2(9,8)                         \
 		    a = a                                 \
-		}" 9
+		}" 8
 
 .PHONY: clean
 clean:

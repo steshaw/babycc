@@ -1,6 +1,92 @@
 	.file	"example.c"
 	.section	.rodata
 .LC0:
+	.string	"FunctionWith1Local: a = %d\n"
+	.text
+.globl FunctionWith1Local
+	.type	FunctionWith1Local, @function
+FunctionWith1Local:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$24, %esp
+	movl	-4(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC0, (%esp)
+	call	printf
+	leave
+	ret
+	.size	FunctionWith1Local, .-FunctionWith1Local
+	.section	.rodata
+.LC1:
+	.string	"FunctionWith2Local: a = %d\n"
+.LC2:
+	.string	"FunctionWith2Local: b = %d\n"
+	.text
+.globl FunctionWith2Local
+	.type	FunctionWith2Local, @function
+FunctionWith2Local:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$24, %esp
+	movl	-4(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC1, (%esp)
+	call	printf
+	movl	-8(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC2, (%esp)
+	call	printf
+	leave
+	ret
+	.size	FunctionWith2Local, .-FunctionWith2Local
+	.section	.rodata
+.LC3:
+	.string	"FunctionWith3Local: a = %d\n"
+.LC4:
+	.string	"FunctionWith3Local: b = %d\n"
+.LC5:
+	.string	"FunctionWith3Local: c = %d\n"
+.LC6:
+	.string	"FunctionWith3Local: d = %d\n"
+.LC7:
+	.string	"FunctionWith3Local: e = %d\n"
+	.text
+.globl FunctionWithxLocals
+	.type	FunctionWithxLocals, @function
+FunctionWithxLocals:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$40, %esp
+	movl	$10, -4(%ebp)
+	movl	$20, -8(%ebp)
+	movl	$30, -12(%ebp)
+	movl	$40, -16(%ebp)
+	movl	$50, -20(%ebp)
+	movl	-4(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC3, (%esp)
+	call	printf
+	movl	-8(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC4, (%esp)
+	call	printf
+	movl	-12(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC5, (%esp)
+	call	printf
+	movl	-16(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC6, (%esp)
+	call	printf
+	movl	-20(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC7, (%esp)
+	call	printf
+	leave
+	ret
+	.size	FunctionWithxLocals, .-FunctionWithxLocals
+	.section	.rodata
+.LC8:
 	.string	"%d\n"
 	.text
 .globl Func1
@@ -11,7 +97,7 @@ Func1:
 	subl	$8, %esp
 	movl	8(%ebp), %eax
 	movl	%eax, 4(%esp)
-	movl	$.LC0, (%esp)
+	movl	$.LC8, (%esp)
 	call	printf
 	leave
 	ret
@@ -24,11 +110,11 @@ Func2:
 	subl	$8, %esp
 	movl	8(%ebp), %eax
 	movl	%eax, 4(%esp)
-	movl	$.LC0, (%esp)
+	movl	$.LC8, (%esp)
 	call	printf
 	movl	12(%ebp), %eax
 	movl	%eax, 4(%esp)
-	movl	$.LC0, (%esp)
+	movl	$.LC8, (%esp)
 	call	printf
 	leave
 	ret
@@ -41,15 +127,15 @@ Func3:
 	subl	$8, %esp
 	movl	8(%ebp), %eax
 	movl	%eax, 4(%esp)
-	movl	$.LC0, (%esp)
+	movl	$.LC8, (%esp)
 	call	printf
 	movl	12(%ebp), %eax
 	movl	%eax, 4(%esp)
-	movl	$.LC0, (%esp)
+	movl	$.LC8, (%esp)
 	call	printf
 	movl	16(%ebp), %eax
 	movl	%eax, 4(%esp)
-	movl	$.LC0, (%esp)
+	movl	$.LC8, (%esp)
 	call	printf
 	leave
 	ret
@@ -157,13 +243,13 @@ Or:
 	subl	$4, %esp
 	movl	$0, -4(%ebp)
 	cmpl	$0, 8(%ebp)
-	jne	.L14
+	jne	.L17
 	cmpl	$0, 12(%ebp)
-	jne	.L14
-	jmp	.L13
-.L14:
+	jne	.L17
+	jmp	.L16
+.L17:
 	movl	$1, -4(%ebp)
-.L13:
+.L16:
 	movl	-4(%ebp), %eax
 	leave
 	ret
@@ -176,11 +262,11 @@ And:
 	subl	$4, %esp
 	movl	$0, -4(%ebp)
 	cmpl	$0, 8(%ebp)
-	je	.L16
+	je	.L19
 	cmpl	$0, 12(%ebp)
-	je	.L16
+	je	.L19
 	movl	$1, -4(%ebp)
-.L16:
+.L19:
 	movl	-4(%ebp), %eax
 	leave
 	ret
@@ -217,9 +303,9 @@ Negate:
 	ret
 	.size	Negate, .-Negate
 	.section	.rodata
-.LC1:
+.LC9:
 	.string	"a == 10\n"
-.LC2:
+.LC10:
 	.string	"a != 10\n"
 	.text
 .globl If
@@ -229,19 +315,19 @@ If:
 	movl	%esp, %ebp
 	subl	$8, %esp
 	cmpl	$0, 8(%ebp)
-	je	.L21
-	movl	$.LC1, (%esp)
+	je	.L24
+	movl	$.LC9, (%esp)
 	call	printf
-	jmp	.L20
-.L21:
-	movl	$.LC2, (%esp)
+	jmp	.L23
+.L24:
+	movl	$.LC10, (%esp)
 	call	printf
-.L20:
+.L23:
 	leave
 	ret
 	.size	If, .-If
 	.section	.rodata
-.LC3:
+.LC11:
 	.string	"Hello World!\n"
 	.text
 .globl Callee
@@ -250,7 +336,7 @@ Callee:
 	pushl	%ebp
 	movl	%esp, %ebp
 	subl	$8, %esp
-	movl	$.LC3, (%esp)
+	movl	$.LC11, (%esp)
 	call	printf
 	leave
 	ret
@@ -275,17 +361,20 @@ main:
 	movl	$0, %eax
 	subl	%eax, %esp
 	movl	$1, 4(%esp)
-	movl	$.LC0, (%esp)
+	movl	$.LC8, (%esp)
 	call	printf
 	movl	$78, 4(%esp)
 	movl	$88, (%esp)
 	call	Or
 	movl	%eax, 4(%esp)
-	movl	$.LC0, (%esp)
+	movl	$.LC8, (%esp)
 	call	printf
+	call	FunctionWith1Local
+	call	FunctionWith2Local
+	call	FunctionWithxLocals
 	movl	$0, %eax
 	leave
 	ret
 	.size	main, .-main
 	.section	.note.GNU-stack,"",@progbits
-	.ident	"GCC: (GNU) 3.3.3 (Debian 20040401)"
+	.ident	"GCC: (GNU) 3.3.3 (Debian 20040429)"

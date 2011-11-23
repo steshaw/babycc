@@ -178,6 +178,11 @@ void EmitLoadTrue()
     EmitLoadConst("1"); // XXX could be a faster way of loading 1?
 }
 
+void EmitLoadFalse()
+{
+    EmitClear();
+}
+
 void EmitLoadVar(char *name)
 {
     EmitOp2("movl", name, "%eax");
@@ -849,8 +854,8 @@ void SignedFactor(void)
         Match('-');
         if (g_token == NumberToken) {
             char negNum[256];
-            sprintf(negNum, "$-%s", g_tokenValue);
-            EmitOp2("movl", negNum, "%eax");
+            sprintf(negNum, "-%s", g_tokenValue);
+            EmitLoadConst(negNum);
             Match(NumberToken);
         }
         else {
@@ -1032,43 +1037,6 @@ static void Relation(void)
 }
 
 //---------------------------------------------------------------
-// Probably should remove this - it provides true and false
-// constants. Not needed for C.
-//---------------------------------------------------------------
-/*
-static bool GetBoolean()
-{
-    if (g_token == TrueToken) {
-        return true;
-    }
-    else if (g_token == FalseToken) {
-        return false;
-    }
-    else {
-        Expected("Boolean literal");
-    }
-}
-static bool IsBoolean(int token)
-{
-    return token == TrueToken || token == FalseToken;
-}
-static void BooleanFactor(void)
-{
-    if (IsBoolean(g_token)) {
-        if (GetBoolean()) {
-            Match(TrueToken);
-            EmitLoadTrue();
-        }
-        else {
-            Match(FalseToken);
-            EmitClear();
-        }
-    }
-    else Relation();
-}
-*/
-
-//---------------------------------------------------------------
 static void NotFactor(void)
 {
     if (g_token == '!') {
@@ -1091,17 +1059,16 @@ void And(void)
     char *falseLabel = NewLabel();
     char *endLabel = NewLabel();
 
-    // compare first false/zero
+    // compare first false
     EmitPopBranchFalse(falseLabel);
 
-    // compare second with false/zero
+    // compare second with false
     EmitBranchFalse(falseLabel);
     EmitLoadConst("1");
-    EmitOp1("jmp", endLabel);
+    EmitBranch(endLabel);
 
-    // load 0/false
     EmitLabel(falseLabel);
-    EmitClear();
+    EmitLoadFalse();
 
     EmitLabel(endLabel);
 }
@@ -1177,7 +1144,7 @@ void While()
     char *endLabel = NewLabel();
     // terminate loop if condition is false
     EmitBranchFalse(endLabel); 
-    // FIXME EmitBranchFalse does cmpl!!!!!!!!!!!!!!!!!!!
+    // XXX EmitBranchFalse does cmpl!!!!!!!!!!!!!!!!!!!
     Statement(endLabel);
     EmitBranch(conditionLabel);
     EmitLabel(endLabel);
@@ -1206,7 +1173,7 @@ void Break(char* innermostLoopLabel)
     if (innermostLoopLabel == NULL) {
         Abort("break statement not within loop");
     }
-    EmitOp1("jmp", innermostLoopLabel);
+    EmitBranch(innermostLoopLabel);
 }
 
 //---------------------------------------------------------------
@@ -1251,27 +1218,6 @@ void Block(char *innermostLoopLabel)
     Statements(innermostLoopLabel);
     Match('}');
 }
-
-//---------------------------------------------------------------
-/*
- XXX not used any more
-void ExpressionFunction(void)
-{
-    EmitFunctionPreamble("expression");
-
-    if (g_token == '{') {
-        Block(NULL);
-    }
-    else {
-        Statements(NULL);
-    }
-
-    EmitFunctionPostamble("expression");
-    EmitGlobalVariableDefinitions();
-
-    Match('\0'); // end of stream
-}
-*/
 
 typedef enum {
     Int,
