@@ -9,16 +9,24 @@ expression=$1
 expected=$2
 
 echo "expression is '$expression'"
-superc "$expression" >expression.s && 
-    cat expression.s && 
-    gcc expression.s main.o -o expression
-if [ $? -eq 0 ]; then
-    ./expression >expression.out
-    cat expression.out
-    if [ "`<expression.out`" -ne "$expected" ]; then
+superc "$expression" >expression.s 2>superc.out
+if [ $? -ne 0 ]; then
+    cat superc.out
+    if [ "`<superc.out`" != "$expected" ]; then
         echo "EXPECTED $expected"
         exit 1
     fi
+    exit 0
 fi
-
-exit 0
+cat expression.s
+gcc expression.s main.o -o expression
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+./expression >expression.out 2>&1
+echo -n "=> "
+cat expression.out
+if [ "`<expression.out`" -ne "$expected" ]; then
+    echo "EXPECTED $expected"
+    exit 1
+fi

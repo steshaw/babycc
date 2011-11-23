@@ -10,26 +10,63 @@
  * The rest could be used as a faster "stack".
  */
 
+/*
+ * Registers (as reported by ddd):
+ *
+ * Integer registers:
+ *      eax
+ *      ecx
+ *      edx
+ *      ebx
+ *      esp
+ *      ebp
+ *      esi
+ *      edi
+ *      eip
+ *      eflags
+ *      cs
+ *      ss
+ *      ds
+ *      es
+ *      fs
+ *      gs
+ *
+ * Other registers:
+ *      st0-7
+ *      fctrl
+ *      fstat
+ *      ftag
+ *      fiseg
+ *      fioff
+ *      foseg
+ *      fooff
+ *      fop
+ *      xmm0-7
+ *      mxcsr
+ *      mm0-7
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdbool.h>
 
-typedef int bool;
-
-enum Tokens {
+enum Token {
     IF = 256, // Start after the ascii characters 0-255
     ELSE,
     WHILE,
     DO,
-    BREAK
+    BREAK,
+    TrueToken,
+    FalseToken
 };
 
 //---------------------------------------------------------------
 //  Variable Declarations
 //---------------------------------------------------------------
 static char* parseString;
-static int i = 0;
+static int pos = 0;
 static int lookahead;
 static int numGlobals = 0;
 static char* globalNames[256]; // XXX hard limit :-(
@@ -125,36 +162,48 @@ void EmitOp1(char *instruction, char *p1)
 // Lexer
 //===============================================================
 
+struct Keyword {
+    char *keyword;
+    int keywordLength;
+    enum Token token;
+};
+
+#define DEF_KEYWORD(kw, t) {kw, strlen(kw), t}
+
+struct Keyword keywords[] = {
+    DEF_KEYWORD("if", IF),
+    DEF_KEYWORD("else", ELSE),
+    DEF_KEYWORD("while", WHILE),
+    DEF_KEYWORD("do", DO),
+    DEF_KEYWORD("break", BREAK),
+    DEF_KEYWORD("true", TrueToken),
+    DEF_KEYWORD("false", FalseToken),
+};
+
+// calculate the size of a static array
+#define ARRAYSIZE(x) (sizeof(x)/sizeof(*x))
+
 ///---------------------------------------------------------------
 ///  Read New Character From Input Stream
 ///---------------------------------------------------------------
 void GetChar(void)
 {
     // XXX this is quite inefficient
+    bool found = false;
+    for (int i = 0; i < ARRAYSIZE(keywords); ++i) {
+        if (strncmp(parseString+pos, keywords[i].keyword, 
+                    keywords[i].keywordLength) == 0) 
+        {
+            lookahead = keywords[i].token;
+            pos += keywords[i].keywordLength;
+            found = true;
+            break;
+        }
+    }
 
-    if (strncmp(parseString+i, "if", 2) == 0) {
-        lookahead = IF;
-        i += 2;
-    }
-    else if (strncmp(parseString+i, "else", 4) == 0) {
-        lookahead = ELSE;
-        i += 4;
-    }
-    else if (strncmp(parseString+i, "while", 5) == 0) {
-        lookahead = WHILE;
-        i += 5;
-    }
-    else if (strncmp(parseString+i, "do", 2) == 0) {
-        lookahead = DO;
-        i += 2;
-    }
-    else if (strncmp(parseString+i, "break", 5) == 0) {
-        lookahead = BREAK;
-        i += 5;
-    }
-    else {
-        lookahead = parseString[i]; // was: "lookahead = getchar();"
-        ++i;
+    if (!found) {
+        lookahead = parseString[pos]; // was: "lookahead = getchar();"
+        ++pos;
     }
 }
 
@@ -171,21 +220,24 @@ void EatWhite(void)
 // --------------------------------------------------------------
 void Error(char *s)
 {
-    fprintf(stderr, "\nError: %s (position %d).\n", s, i);
+    fprintf(stderr, "Error: %s (position %d).\n", s, pos);
 }
 
 // --------------------------------------------------------------
 //  Report Error and Halt
 // --------------------------------------------------------------
+void Abort(char *s) __attribute__ ((noreturn));
+
 void Abort(char *s)
 {
     Error(s);
-    abort();
+    exit(1);
 }
 
 // --------------------------------------------------------------
 //  Report What Was Expected
 // --------------------------------------------------------------
+void Expected(char *s) __attribute__ ((noreturn));
 void Expected(char *s)
 {
     const char *e = " expected";
@@ -260,6 +312,21 @@ char* GetNum()
     strcpy(result, value);
     return result;
 }
+
+// --------------------------------------------------------------
+bool GetBoolean()
+{
+    if (lookahead == TrueToken) {
+        return true;
+    }
+    else if (lookahead == FalseToken) {
+        return false;
+    }
+    else {
+        Expected("Boolean literal");
+    }
+}
+
 
 // --------------------------------------------------------------
 //  Initialize
