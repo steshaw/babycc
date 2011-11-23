@@ -4,11 +4,8 @@ expression:
 	pushl	%ebp
 	movl	%esp, %ebp
 	movl	$1, %eax
-	cmpl	$0, %eax
-	sete	%al
-	movzbl	%al, %eax
-	movl	%eax, a
+	movl	%eax, ifile
 	popl	%ebp
 	ret
 	.size	expression, .-expression
-	.comm	a,4,4
+	.comm	ifile,4,4

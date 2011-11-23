@@ -10,99 +10,34 @@
  * The rest could be used as a faster "stack".
  */
 
-/*
- * Registers (as reported by ddd):
- *  
- *  XXX where is al?
- *
- * Integer registers:
- *      eax
- *      ecx
- *      edx
- *      ebx
- *      esp
- *      ebp
- *      esi
- *      edi
- *      eip
- *      eflags
- *      cs
- *      ss
- *      ds
- *      es
- *      fs
- *      gs
- *
- * Other registers:
- *      st0-7
- *      fctrl
- *      fstat
- *      ftag
- *      fiseg
- *      fioff
- *      foseg
- *      fooff
- *      fop
- *      xmm0-7
- *      mxcsr
- *      mm0-7
- */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <assert.h>
 
 
-/*
-XXX here is an example of using snprintf from the man page
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-char *
-make_message(const char *fmt, ...) {
- // Guess we need no more than 100 bytes.
- int n, size = 100;
- char *p;
- va_list ap;
- if ((p = malloc (size)) == NULL)
-    return NULL;
- while (1) {
-    // Try to print in the allocated space.
-    va_start(ap, fmt);
-    n = vsnprintf (p, size, fmt, ap);
-    va_end(ap);
-    // If that worked, return the string.
-    if (n > -1 && n < size)
-       return p;
-    // Else try again with more space.
-    if (n > -1)    // glibc 2.1
-       size = n+1; // precisely what is needed
-    else           // glibc 2.0
-       size *= 2;  // twice the old size
-    if ((p = realloc (p, size)) == NULL)
-       return NULL;
- }
-}
-*/
+typedef enum {
+    IfToken = 256, // Start after the ascii characters 0-255
+    ElseToken,
+    WhileToken,
+    DoToken,
+    BreakToken,
 
-
-enum Token {
-    IF = 256, // Start after the ascii characters 0-255
-    ELSE,
-    WHILE,
-    DO,
-    BREAK,
     TrueToken,
     FalseToken,
+
     OrToken,
     AndToken,
+
     EqualsToken,
     NotEqualsToken,
-    LessThanToken,
-    GreaterThanToken,
-};
+
+    IdentifierToken,
+    NumberToken,
+} Token;
 
 
 
@@ -215,56 +150,16 @@ void EmitOp2(char *instruction, char *p1, char *p2)
 //===============================================================
 // Lexer
 //===============================================================
-
-struct Keyword {
-    char *keyword;
-    int keywordLength;
-    enum Token token;
-};
-
-#define DEF_KEYWORD(kw, t) {kw, strlen(kw), t}
-
-struct Keyword keywords[] = {
-    DEF_KEYWORD("if", IF),
-    DEF_KEYWORD("else", ELSE),
-    DEF_KEYWORD("while", WHILE),
-    DEF_KEYWORD("do", DO),
-    DEF_KEYWORD("break", BREAK),
-    DEF_KEYWORD("true", TrueToken),
-    DEF_KEYWORD("false", FalseToken),
-    DEF_KEYWORD("||", OrToken),
-    DEF_KEYWORD("&&", AndToken),
-    DEF_KEYWORD("==", EqualsToken),
-    DEF_KEYWORD("!=", NotEqualsToken),
-    DEF_KEYWORD("<", LessThanToken),
-    DEF_KEYWORD(">", GreaterThanToken),
-};
-
-// calculate the size of a static array
-#define ARRAYSIZE(x) (sizeof(x)/sizeof(*x))
+static Token g_token;
+static char *g_tokenValue;
 
 ///---------------------------------------------------------------
 ///  Read New Character From Input Stream
 ///---------------------------------------------------------------
 void GetChar(void)
 {
-    // XXX this is quite inefficient
-    bool found = false;
-    for (int i = 0; i < ARRAYSIZE(keywords); ++i) {
-        if (strncmp(parseString+pos, keywords[i].keyword, 
-                    keywords[i].keywordLength) == 0) 
-        {
-            lookahead = keywords[i].token;
-            pos += keywords[i].keywordLength;
-            found = true;
-            break;
-        }
-    }
-
-    if (!found) {
-        lookahead = parseString[pos]; // was: "lookahead = getchar();"
-        ++pos;
-    }
+    lookahead = parseString[pos]; // was: "lookahead = getchar();"
+    ++pos;
 }
 
 // --------------------------------------------------------------
@@ -280,7 +175,7 @@ void EatWhite(void)
 // --------------------------------------------------------------
 void Error(char *s)
 {
-    fprintf(stderr, "Error: %s (position %d).\n", s, pos);
+    fprintf(stderr, "Error: %s.\n", s);
 }
 
 // --------------------------------------------------------------
@@ -308,29 +203,117 @@ void Expected(char *s)
     Abort(newString);
 }
 
-// --------------------------------------------------------------
-//  Match a Specific Input Character
-// --------------------------------------------------------------
-void Match(int c)
+typedef struct {
+    char *keyword;
+    int length;
+    Token token;
+} Keyword;
+
+#define DEF_KEYWORD(kw, t) {kw, strlen(kw), t}
+
+Keyword keywords[] = {
+    DEF_KEYWORD("if", IfToken),
+    DEF_KEYWORD("else", ElseToken),
+    DEF_KEYWORD("while", WhileToken),
+    DEF_KEYWORD("do", DoToken),
+    DEF_KEYWORD("break", BreakToken),
+    DEF_KEYWORD("true", TrueToken),
+    DEF_KEYWORD("false", FalseToken),
+};
+
+
+// calculate the size of a static array
+#define ARRAYSIZE(x) (sizeof(x)/sizeof(*x))
+
+//---------------------------------------------------------------
+Token LookupKeyword(char *name)
 {
-    if (lookahead == c) {
-        GetChar();
-        EatWhite();
+    for (int i = 0; i < ARRAYSIZE(keywords); ++i) {
+        if (strcmp(name, keywords[i].keyword) == 0) {
+            return keywords[i].token;
+        }
     }
-    else if (c == '\0') {
-        Expected("End of stream");
+    return -1;
+}
+
+Keyword operators[] = {
+    DEF_KEYWORD("||", OrToken),
+    DEF_KEYWORD("&&", AndToken),
+    DEF_KEYWORD("==", EqualsToken),
+    DEF_KEYWORD("!=", NotEqualsToken),
+    DEF_KEYWORD("<", '<'),
+    DEF_KEYWORD(">", '>'),
+    DEF_KEYWORD("+", '+'),
+    DEF_KEYWORD("-", '-'),
+    DEF_KEYWORD("*", '*'),
+    DEF_KEYWORD("/", '/'),
+    DEF_KEYWORD("=", '='),
+    DEF_KEYWORD("!", '!'),
+};
+
+void LookupOperator(char *s)
+{
+    for (int i = 0; i < ARRAYSIZE(operators); ++i) {
+        if (strncmp(s, operators[i].keyword, operators[i].length) == 0) {
+            for (int j = 0; j < operators[i].length; ++j) {
+                GetChar();
+            }
+            g_tokenValue = operators[i].keyword;
+            g_token = operators[i].token;
+            return;
+        }
     }
-    else {
-        char s[] = "'_'";
-        s[1] = c;
-        Expected(s);
+    assert(false && "unreachable");
+}
+
+
+bool IsOp()
+{
+    switch (lookahead) {
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case '<':
+        case '>':
+        case '|': 
+        case '&':
+        case '=':
+        case '!':
+            return true;
+        default:
+            return false;
     }
 }
 
+//---------------------------------------------------------------
+void GetOperator(void)
+{
+/*
+    printf("GetOperator() lookahead = '%c'\n", lookahead);
+    printf("GetOperator() '%s'\n", parseString+pos-3);
+    for (int i = 0; i < ARRAYSIZE(operators); ++i) {
+        if (strncmp(parseString+pos-3, operators[i].keyword,
+                    operators[i].length) == 0)
+        {
+            pos += operators[i].length - 1;
+            return operators[i].keyword;
+        }
+    }
+    assert(false && "cannot reach here in GetOperator()");
+*/
+
+    if (!IsOp(lookahead)) Expected("Operator");
+
+    LookupOperator(parseString+pos-1);
+}
+
 // --------------------------------------------------------------
-//  Get an Identifier
+//  Get an Identifier or Keyword
+//
+//  identifier ::= letter (letter|digit)*
 // --------------------------------------------------------------
-char* GetName()
+void GetName(void)
 {
     if (!isalpha(lookahead)) Expected("Name");
 
@@ -342,18 +325,23 @@ char* GetName()
        GetChar();
     }
     name[i++] = '\0';
-    EatWhite();
 
     // heap allocate the result
-    char *result = GcMalloc(i);
-    strcpy(result, name);
-    return result;
+    g_tokenValue = GcStrDup(name);
+
+    Token keywordToken = LookupKeyword(g_tokenValue);
+    if (keywordToken == -1) {
+        g_token = IdentifierToken;
+    }
+    else g_token = keywordToken;
 }
 
 // --------------------------------------------------------------
 //  Get a Number
+//
+//  number ::= digit+
 // --------------------------------------------------------------
-char* GetNum()
+void GetNum(void)
 {
     if (!isdigit(lookahead)) Expected("Integer");
 
@@ -365,12 +353,68 @@ char* GetNum()
        GetChar();
     }
     value [i++] = '\0';
-    EatWhite();
 
     // heap allocate the result
-    char *result = GcMalloc(i);
-    strcpy(result, value);
-    return result;
+    g_token = NumberToken;
+    g_tokenValue = GcStrDup(value);
+}
+
+void Scan(void)
+{
+    EatWhite();
+    if (isalpha(lookahead)) {
+        GetName();
+    }
+    else if (isdigit(lookahead)) {
+        GetNum();
+    }
+    else if (IsOp()) {
+        GetOperator();
+    }
+    else if (lookahead == '{' ||
+             lookahead == '}' ||
+             lookahead == '(' ||
+             lookahead == ')')
+    {
+        g_token = lookahead;
+        char *g_tokenValue = GcStrDup(" ");
+        g_tokenValue[0] = lookahead;
+        GetChar();
+    }
+    else if (lookahead == '\0') {
+        g_token = lookahead;
+        g_tokenValue = "EOS";
+    }
+    else {
+        printf("lookahead = '%c'\n", lookahead);
+        assert(false && "bad input");
+        /*
+        // set token value to string with lookahead character in it
+        char *g_tokenValue = GcStrDup(" ");
+        g_tokenValue[0] = lookahead;
+        GetChar();
+        g_token = OperatorToken;
+        */
+    }
+}
+
+// --------------------------------------------------------------
+//  Match a Specific Input Character
+// --------------------------------------------------------------
+void Match(int token)
+{
+    if (g_token == token) {
+        Scan();
+    }
+    else if (token == '\0') {
+        Expected("End of stream");
+    }
+    else {
+        // FIXME - Need PrintToken here
+        char s[] = "'_'";
+        s[1] = token;
+        Expected(s);
+    }
 }
 
 static bool IsBoolean(int token)
@@ -381,17 +425,16 @@ static bool IsBoolean(int token)
 // --------------------------------------------------------------
 static bool GetBoolean()
 {
-    if (lookahead == TrueToken) {
+    if (g_token == TrueToken) {
         return true;
     }
-    else if (lookahead == FalseToken) {
+    else if (g_token == FalseToken) {
         return false;
     }
     else {
         Expected("Boolean literal");
     }
 }
-
 
 // --------------------------------------------------------------
 //  Initialize
@@ -400,7 +443,7 @@ void Init(char *s)
 {
     parseString = s;
     GetChar();
-    EatWhite();
+    Scan();
 }
 
 //===============================================================
@@ -409,21 +452,18 @@ void Init(char *s)
 
 void Identifier(void)
 {
-    char *name = GetName();
-    if (lookahead == '(') {
+    char *name = g_tokenValue;
+    Match(IdentifierToken);
+    if (g_token == '(') {
         // function call
         Match('(');
         //Expression(); // XXX not doing parameters yet
-        char s[256];
-        sprintf(s, "call\t%s", name);
-        EmitLn(s);
+        EmitOp1("call", name);
         Match(')');
     }
     else {
         // variable reference
-        char s[256];
-        sprintf(s, "movl\t%s, %%eax", name);
-        EmitLn(s);
+        EmitOp2("movl", name, "%eax");
         RegisterGlobal(name);
     }
 }
@@ -437,32 +477,37 @@ void Factor(void)
 {
     void Expression(void);
 
-    if (lookahead == '(') {
+    if (g_token == '(') {
         Match('(');
         Expression();
         Match(')');
     }
-    else if (isalpha(lookahead)) {
+    else if (g_token == IdentifierToken) {
         Identifier();
     }
-    else {
-        char num[256];
-        sprintf(num, "$%s", GetNum());
+    else if (g_token == NumberToken) {
+        char num[100];
+        sprintf(num, "$%s", g_tokenValue);
         EmitOp2("movl", num, "%eax");
+        Match(NumberToken);
+    }
+    else {
+        Expected("one of '(', <number>, <identifier>");
     }
 }
 
 void SignedFactor(void)
 {
-    if (lookahead == '+') {
-        GetChar();
+    if (g_token == '+') {
+        Match('+');
     }
-    else if (lookahead == '-') {
-        GetChar();
-        if (isdigit(lookahead)) {
+    else if (g_token == '-') {
+        Match('-');
+        if (g_token == NumberToken) {
             char negNum[256];
-            sprintf(negNum, "$-%s", GetNum());
+            sprintf(negNum, "$-%s", g_tokenValue);
             EmitOp2("movl", negNum, "%eax");
+            Match(NumberToken);
         }
         else {
             Factor();
@@ -498,11 +543,13 @@ void Divide(void)
 void Term(void)
 {
     SignedFactor();
-    while (lookahead == '*' || lookahead == '/') {
+    while (g_token == '*' || g_token == '/') {
         EmitLn("pushl\t%eax");
-        switch (lookahead) {
+        switch (g_token) {
             case '*': Multiply(); break;
             case '/': Divide(); break;
+            default:
+                assert(false && "unreachable");
         };
     }
 }
@@ -531,9 +578,9 @@ void Subtract(void)
 }
 
 //---------------------------------------------------------------
-bool IsAddOp()
+bool IsAddOp(Token token)
 {
-    return lookahead == '+' || lookahead == '-';
+    return token == '+' || token == '-';
 }
 
 //---------------------------------------------------------------
@@ -543,11 +590,13 @@ void Expression(void)
 {
     Term();
 
-    while (IsAddOp(lookahead)) {
+    while (IsAddOp(g_token)) {
         EmitLn("pushl\t%eax");
-        switch (lookahead) {
+        switch (g_token) {
             case '+': Add(); break;
             case '-': Subtract(); break;
+            default:
+                assert(false && "unreachable");
         }
     }
 
@@ -584,13 +633,13 @@ void Or(void)
 }
 
 //---------------------------------------------------------------
-static bool IsRelOp()
+static bool IsRelOp(Token token)
 {
-    switch (lookahead) {
+    switch (token) {
         case EqualsToken:
         case NotEqualsToken:
-        case LessThanToken:
-        case GreaterThanToken:
+        case '<':
+        case '>':
             return true;
         default: 
             return false;
@@ -598,7 +647,7 @@ static bool IsRelOp()
 }
 
 //---------------------------------------------------------------
-void RelationalOperator(enum Token token, char *setInstruction)
+void RelationalOperator(Token token, char *setInstruction)
 {
     Match(token);
     Expression();
@@ -623,13 +672,13 @@ void NotEquals(void)
 //---------------------------------------------------------------
 void LessThan(void)
 {
-    RelationalOperator(LessThanToken, "setl");
+    RelationalOperator('<', "setl");
 }
 
 //---------------------------------------------------------------
 void GreaterThan(void)
 {
-    RelationalOperator(GreaterThanToken, "setg");
+    RelationalOperator('>', "setg");
 }
 
 //---------------------------------------------------------------
@@ -638,13 +687,15 @@ void GreaterThan(void)
 static void Relation(void)
 {
     Expression();
-    if (IsRelOp()) {
+    if (IsRelOp(g_token)) {
         EmitLn("push\t%eax");
-        switch (lookahead) {
+        switch (g_token) {
             case EqualsToken: Equals(); break;
             case NotEqualsToken: NotEquals(); break;
-            case LessThanToken: LessThan(); break;
-            case GreaterThanToken: GreaterThan(); break;
+            case '<': LessThan(); break;
+            case '>': GreaterThan(); break;
+            default:
+                assert(false && "unreachable");
         }
     }
 }
@@ -652,7 +703,7 @@ static void Relation(void)
 //---------------------------------------------------------------
 static void BooleanFactor(void)
 {
-    if (IsBoolean(lookahead)) {
+    if (IsBoolean(g_token)) {
         if (GetBoolean()) {
             Match(TrueToken);
             EmitLn("movl\t$1, %eax");// could use -1 and then bitwize not is 0
@@ -669,7 +720,7 @@ static void BooleanFactor(void)
 
 static void NotFactor(void)
 {
-    if (lookahead == '!') {
+    if (g_token == '!') {
         Match('!');
         BooleanFactor();
 
@@ -711,7 +762,7 @@ void And(void)
 void BooleanTerm(void)
 {
     NotFactor();
-    while (lookahead == AndToken) {
+    while (g_token == AndToken) {
         EmitLn("pushl\t%eax");
         And();
     }
@@ -721,7 +772,7 @@ void BooleanTerm(void)
 void BooleanExpression(void)
 {
     BooleanTerm();
-    while (lookahead == OrToken) {
+    while (g_token == OrToken) {
         EmitLn("push\t%eax");
         Or();
     }
@@ -730,7 +781,8 @@ void BooleanExpression(void)
 //---------------------------------------------------------------
 void Assignment(void)
 {
-    char *name = GetName();
+    char *name = g_tokenValue;
+    Match(IdentifierToken);
     RegisterGlobal(name);
     Match('=');
     BooleanExpression();
@@ -747,27 +799,19 @@ void If(char *innermostLoopLabel)
 {
     void Statement(char *innermostLoopLabel);
 
-    Match(IF);
+    Match(IfToken);
     char *label1 = NewLabel();
     char *label2 = label1;
     BooleanExpression();
 
     // skip if condition not true
-    {
-        char op[256];
-        sprintf(op, "je\t%s\n", label1);
-        Emit(op);
-    }
+    EmitOp1("je", label1);
     Statement(innermostLoopLabel);
 
-    if (lookahead == ELSE) {
-        Match(ELSE);
+    if (g_token == ElseToken) {
+        Match(ElseToken);
         label2 = NewLabel();
-        {
-            char op[256];
-            sprintf(op, "jmp\t%s", label2);
-            EmitLn(op);
-        }
+        EmitOp1("jmp", label2);
         EmitLabel(label1);
         Statement(innermostLoopLabel);
     }
@@ -780,7 +824,7 @@ void While()
 {
     void Statement(char *innermostLoopLabel);
 
-    Match(WHILE);
+    Match(WhileToken);
     char *conditionLabel = NewLabel();
     EmitLabel(conditionLabel);
     BooleanExpression();
@@ -798,12 +842,12 @@ void DoWhile()
 {
     void Statement(char *innermostLoopLabel);
 
-    Match(DO);
+    Match(DoToken);
     char *startLabel = NewLabel();
     char *endLabel = NewLabel();
     EmitLabel(startLabel);
     Statement(endLabel);
-    Match(WHILE);
+    Match(WhileToken);
     BooleanExpression();
     EmitOp1("jne", startLabel);
     EmitLabel(endLabel);
@@ -812,7 +856,7 @@ void DoWhile()
 //---------------------------------------------------------------
 void Break(char* innermostLoopLabel)
 {
-    Match(BREAK);
+    Match(BreakToken);
     if (innermostLoopLabel == NULL) {
         Abort("break statement not within loop");
     }
@@ -824,19 +868,19 @@ void Statement(char* innermostLoopLabel)
 {
     void Block(char *innermostLoopLabel);
 
-    if (lookahead == '{') {
+    if (g_token == '{') {
         Block(innermostLoopLabel);
     }
-    else if (lookahead == IF) {
+    else if (g_token == IfToken) {
         If(innermostLoopLabel);
     }
-    else if (lookahead == WHILE) {
+    else if (g_token == WhileToken) {
         While();
     }
-    else if (lookahead == DO) {
+    else if (g_token == DoToken) {
         DoWhile();
     }
-    else if (lookahead == BREAK) {
+    else if (g_token == BreakToken) {
         Break(innermostLoopLabel);
     }
     else {
@@ -846,9 +890,9 @@ void Statement(char* innermostLoopLabel)
 
 void Statements(char *innermostLoopLabel)
 {
-    while (lookahead == IF || lookahead == WHILE || 
-           lookahead == DO || lookahead == BREAK ||
-           isalpha(lookahead))
+    while (g_token == IfToken || g_token == WhileToken || 
+           g_token == DoToken || g_token == BreakToken ||
+           g_token == IdentifierToken)
     {
         Statement(innermostLoopLabel);
     }
@@ -898,11 +942,11 @@ void EmitGlobalVariableDefinitions(void)
 }
 
 //---------------------------------------------------------------
-void Top(void)
+void Root(void)
 {
     EmitFunctionPreamble("expression");
 
-    if (lookahead == '{') {
+    if (g_token == '{') {
         Block(NULL);
     }
     else {
@@ -916,17 +960,49 @@ void Top(void)
 }
 
 /*
-//---------------------------------------------------------------
-void BooleanTop(void)
+void OutputScannerStream(void)
 {
-    EmitFunctionPreamble("expression");
+    do {
+        switch (g_token) {
+            case IdentifierToken: printf("Identifier "); break;
+            case NumberToken: printf("Number "); break;
+            //case OperatorToken: printf("Operator "); break;
+            case IfToken: 
+            case ElseToken:
+            case WhileToken:
+            case DoToken:
+            case BreakToken:
+                printf("Keyword "); 
+                break;
 
-    BooleanExpression();
+            case TrueToken: printf("True "); break;
+            case FalseToken: printf("False "); break;
 
-    EmitFunctionPostamble("expression");
-    EmitGlobalVariableDefinitions();
+            case OrToken: 
+            case AndToken:
+            case EqualsToken:
+            case NotEqualsToken:
+            case '<':
+            case '>':
+            case '+':
+            case '-':
+            case '/':
+            case '*':
+            case '=':
+                printf("Operator ");
+                break;
 
-    Match('\0'); // end of stream
+            case '\0': break;
+            default:
+                printf("Other ");
+                break;
+        }
+
+        printf("%s\n", g_tokenValue);
+
+        Scan();
+    }
+    while (g_token != '\0');
 }
 */
 
@@ -940,7 +1016,7 @@ int main(int argc, char*argv[])
         exit(2);
     }
     Init(argv[1]);
-    Top();
+    Root();
 
     return 0;
 }

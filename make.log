@@ -2,7 +2,7 @@ rm -f *.o superc
 cc -g -Wall --std=c99    superc.c   -o superc
 cc -g -Wall --std=c99   -c -o main.o main.c
 expression 'a' failed with:
-Error: '=' expected (position 2).
+Error: '=' expected.
 t=8+4 => 12
 t=8-4 => 4
 t=2*3 => 6
@@ -22,7 +22,7 @@ if 1 t=4 else t=5 => 4
 t=10 while (t) { t = t - 1 } => 0
 t=10 do { t = t - 1 } while (t) => 0
 expression 'a=1 break b=2' failed with:
-Error: break statement not within loop (position 11).
+Error: break statement not within loop.
 t=10 do { break } while (t) => 10
 t=10 do { t=8 break } while (t) => 8
 t=10 while t { break }  => 10
@@ -41,3 +41,4 @@ a=true && false => 0
 a=true && true => 1
 a = !false => 1
 a = !true => 0
+ifile = 1 => 1

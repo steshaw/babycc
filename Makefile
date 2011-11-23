@@ -5,7 +5,7 @@ all: superc
 
 .PHONY: check
 check: all main.o
-	@check "a" "Error: '=' expected (position 2)."
+	@check "a" "Error: '=' expected."
 	@check "t=8+4" 12
 	@check "t=8-4" 4
 	@check "t=2*3" 6
@@ -24,7 +24,7 @@ check: all main.o
 	@check "if 1 t=4 else t=5" 4
 	@check "t=10 while (t) { t = t - 1 }" 0
 	@check "t=10 do { t = t - 1 } while (t)" 0
-	@check "a=1 break b=2" "Error: break statement not within loop (position 11)."
+	@check "a=1 break b=2" "Error: break statement not within loop."
 	@check "t=10 do { break } while (t)" 10
 	@check "t=10 do { t=8 break } while (t)" 8
 	@check "t=10 while t { break } " 10
@@ -47,6 +47,8 @@ check: all main.o
 
 	@check "a = !false" 1
 	@check "a = !true" 0
+
+	@check "ifile = 1" 1
 
 .PHONY: clean
 clean:

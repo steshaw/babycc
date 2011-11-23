@@ -21,6 +21,7 @@ fi
 #cat expression.s
 gcc expression.s main.o -o expression
 if [ $? -ne 0 ]; then
+    echo "assembler failed on expression '$expression'"
     exit 1
 fi
 ./expression >expression.out 2>&1

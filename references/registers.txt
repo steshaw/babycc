@@ -1,0 +1,35 @@
+Registers (as reported by ddd):
+ 
+XXX Where/what is the al register?
+
+Integer registers:
+     eax
+     ecx
+     edx
+     ebx
+     esp
+     ebp
+     esi
+     edi
+     eip
+     eflags
+     cs
+     ss
+     ds
+     es
+     fs
+     gs
+
+Other registers:
+     st0-7
+     fctrl
+     fstat
+     ftag
+     fiseg
+     fioff
+     foseg
+     fooff
+     fop
+     xmm0-7
+     mxcsr
+     mm0-7
