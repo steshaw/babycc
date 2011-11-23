@@ -1,4 +1,7 @@
 
+* add char type - do automatic extension on load and parameter passing
+  to int (this will make it easy)
+
 Todo items from Crenshaw tutorials:
 
 o Basic types, such as character and integer types

@@ -1,5 +1,12 @@
 #include <stdio.h>
 
+int a;
+int b;
+char c;
+int n;
+long m;
+long long ll;
+
 void expression(){int b; int a; b = 9; a=8; }
 
 void FunctionWith1Local(void)

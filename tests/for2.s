@@ -1,4 +1,5 @@
-.globl main
+	.file "tests/for2.c"
+.global main
 	.type	main, @function
 main:
 	pushl	%ebp
@@ -19,6 +20,9 @@ main:
 	movzbl	%bl, %eax
 	cmpl	$0, %eax
 	je	.L2
+	movl	$.LC1, %eax
+	pushl	%eax
+	call	prints
 	movl	$1, %eax
 	movl	%eax, -8(%ebp)
 .L3:
@@ -31,6 +35,9 @@ main:
 	movzbl	%bl, %eax
 	cmpl	$0, %eax
 	je	.L4
+	movl	$.LC2, %eax
+	pushl	%eax
+	call	prints
 	movl	-8(%ebp), %eax
 	pushl	%eax
 	call	printi
@@ -57,3 +64,7 @@ main:
 	.section	.rodata
 .LC0:
 	.string	"before\n"
+.LC1:
+	.string	"in first for\n"
+.LC2:
+	.string	"in second for\n"

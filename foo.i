@@ -1,7 +1,7 @@
-# 1 "example.c"
+# 1 "foo.c"
 # 1 "<built-in>"
 # 1 "<command line>"
-# 1 "example.c"
+# 1 "foo.c"
 # 1 "/usr/include/stdio.h" 1 3 4
 # 28 "/usr/include/stdio.h" 3 4
 # 1 "/usr/include/features.h" 1 3 4
@@ -555,17 +555,7 @@ extern FILE *tmpfile (void);
 # 178 "/usr/include/stdio.h" 3 4
 extern char *tmpnam (char *__s) ;
 
-
-
-
-
-extern char *tmpnam_r (char *__s) ;
-# 196 "/usr/include/stdio.h" 3 4
-extern char *tempnam (__const char *__dir, __const char *__pfx)
-     __attribute__ ((__malloc__));
-
-
-
+# 201 "/usr/include/stdio.h" 3 4
 
 
 
@@ -578,8 +568,6 @@ extern int fclose (FILE *__stream);
 
 extern int fflush (FILE *__stream);
 
-# 221 "/usr/include/stdio.h" 3 4
-extern int fflush_unlocked (FILE *__stream);
 # 235 "/usr/include/stdio.h" 3 4
 
 
@@ -598,8 +586,6 @@ extern FILE *freopen (__const char *__restrict __filename,
                       FILE *__restrict __stream);
 # 262 "/usr/include/stdio.h" 3 4
 
-# 273 "/usr/include/stdio.h" 3 4
-extern FILE *fdopen (int __fd, __const char *__modes) ;
 # 294 "/usr/include/stdio.h" 3 4
 
 
@@ -611,18 +597,7 @@ extern void setbuf (FILE *__restrict __stream, char *__restrict __buf) ;
 extern int setvbuf (FILE *__restrict __stream, char *__restrict __buf,
                     int __modes, size_t __n) ;
 
-
-
-
-
-extern void setbuffer (FILE *__restrict __stream, char *__restrict __buf,
-                       size_t __size) ;
-
-
-extern void setlinebuf (FILE *__stream) ;
-
-
-
+# 316 "/usr/include/stdio.h" 3 4
 
 
 
@@ -683,7 +658,32 @@ extern int scanf (__const char *__restrict __format, ...);
 extern int sscanf (__const char *__restrict __s,
                    __const char *__restrict __format, ...) ;
 
-# 430 "/usr/include/stdio.h" 3 4
+
+
+
+
+
+
+
+extern int vfscanf (FILE *__restrict __s, __const char *__restrict __format,
+                    __gnuc_va_list __arg)
+     __attribute__ ((__format__ (__scanf__, 2, 0)));
+
+
+
+
+
+extern int vscanf (__const char *__restrict __format, __gnuc_va_list __arg)
+     __attribute__ ((__format__ (__scanf__, 1, 0)));
+
+
+extern int vsscanf (__const char *__restrict __s,
+                    __const char *__restrict __format, __gnuc_va_list __arg)
+     __attribute__ ((__format__ (__scanf__, 2, 0)));
+
+
+
+
 
 
 
@@ -698,14 +698,7 @@ extern int getc (FILE *__stream);
 
 extern int getchar (void);
 
-# 454 "/usr/include/stdio.h" 3 4
-extern int getc_unlocked (FILE *__stream);
-extern int getchar_unlocked (void);
-# 465 "/usr/include/stdio.h" 3 4
-extern int fgetc_unlocked (FILE *__stream);
-
-
-
+# 469 "/usr/include/stdio.h" 3 4
 
 
 
@@ -723,30 +716,7 @@ extern int putc (int __c, FILE *__stream);
 
 extern int putchar (int __c);
 
-# 498 "/usr/include/stdio.h" 3 4
-extern int fputc_unlocked (int __c, FILE *__stream);
-
-
-
-
-
-
-
-extern int putc_unlocked (int __c, FILE *__stream);
-extern int putchar_unlocked (int __c);
-
-
-
-
-
-
-extern int getw (FILE *__stream);
-
-
-extern int putw (int __w, FILE *__stream);
-
-
-
+# 521 "/usr/include/stdio.h" 3 4
 
 
 
@@ -796,14 +766,7 @@ extern size_t fread (void *__restrict __ptr, size_t __size,
 extern size_t fwrite (__const void *__restrict __ptr, size_t __size,
                       size_t __n, FILE *__restrict __s);
 
-# 631 "/usr/include/stdio.h" 3 4
-extern size_t fread_unlocked (void *__restrict __ptr, size_t __size,
-                              size_t __n, FILE *__restrict __stream);
-extern size_t fwrite_unlocked (__const void *__restrict __ptr, size_t __size,
-                               size_t __n, FILE *__restrict __stream);
-
-
-
+# 638 "/usr/include/stdio.h" 3 4
 
 
 
@@ -845,15 +808,7 @@ extern int feof (FILE *__stream) ;
 
 extern int ferror (FILE *__stream) ;
 
-
-
-
-extern void clearerr_unlocked (FILE *__stream) ;
-extern int feof_unlocked (FILE *__stream) ;
-extern int ferror_unlocked (FILE *__stream) ;
-
-
-
+# 735 "/usr/include/stdio.h" 3 4
 
 
 
@@ -867,193 +822,47 @@ extern void perror (__const char *__s);
 
 
 # 1 "/usr/include/bits/sys_errlist.h" 1 3 4
-# 27 "/usr/include/bits/sys_errlist.h" 3 4
-extern int sys_nerr;
-extern __const char *__const sys_errlist[];
 # 748 "/usr/include/stdio.h" 2 3 4
-
-
-
-
-extern int fileno (FILE *__stream) ;
-
-
-
-
-extern int fileno_unlocked (FILE *__stream) ;
-# 767 "/usr/include/stdio.h" 3 4
-extern FILE *popen (__const char *__command, __const char *__modes);
-
-
-
-
-
-extern int pclose (FILE *__stream);
-
-
-
-
-
-extern char *ctermid (char *__s) ;
-# 807 "/usr/include/stdio.h" 3 4
-extern void flockfile (FILE *__stream) ;
-
-
-
-extern int ftrylockfile (FILE *__stream) ;
-
-
-extern void funlockfile (FILE *__stream) ;
 # 831 "/usr/include/stdio.h" 3 4
 
-# 2 "example.c" 2
+# 2 "foo.c" 2
+# 1 "/usr/lib/gcc-lib/i486-linux/3.3.3/include/limits.h" 1 3 4
+# 11 "/usr/lib/gcc-lib/i486-linux/3.3.3/include/limits.h" 3 4
+# 1 "/usr/lib/gcc-lib/i486-linux/3.3.3/include/syslimits.h" 1 3 4
 
-int a;
-int b;
-char c;
-int n;
-long m;
-long long ll;
 
-void expression(){int b; int a; b = 9; a=8; }
 
-void FunctionWith1Local(void)
-{
-    int a;
-    printf("FunctionWith1Local: a = %d\n", a);
-}
 
-void FunctionWith2Local(void)
-{
-    int a;
-    int b;
-    printf("FunctionWith2Local: a = %d\n", a);
-    printf("FunctionWith2Local: b = %d\n", b);
-}
 
-void FunctionWithxLocals(void)
-{
-    int a = 10;
-    int b = 20;
-    int c = 30;
-    int d = 40;
-    int e = 50;
-    printf("FunctionWith3Local: a = %d\n", a);
-    printf("FunctionWith3Local: b = %d\n", b);
-    printf("FunctionWith3Local: c = %d\n", c);
-    printf("FunctionWith3Local: d = %d\n", d);
-    printf("FunctionWith3Local: e = %d\n", e);
-}
 
-void Func1(int a)
-{
-    printf("%d\n", a);
-}
-
-void Func2(int a, int b)
-{
-    printf("%d\n", a);
-    printf("%d\n", b);
-}
-
-void Func3(int a, int b, int c)
-{
-    printf("%d\n", a);
-    printf("%d\n", b);
-    printf("%d\n", c);
-}
-
-void CallFunc1(void)
-{
-    Func1(99);
-}
-
-void CallFunc2(void)
-{
-    Func2(98, 99);
-}
-
-void CallFunc3(void)
-{
-    Func3(97, 98, 99);
-}
-
-int Equals(int a, int b)
-{
-    return a == b;
-}
-
-int NotEquals(int a, int b)
-{
-    return a != b;
-}
-
-int LessThan(int a, int b)
-{
-    return a < b;
-}
-
-int GreaterThan(int a, int b)
-{
-    return a > b;
-}
-
-int Not(int a)
-{
-    return !a;
-}
-
-int Or(int a, int b)
-{
-    return a || b;
-}
-
-int And(int a, int b)
-{
-    return a && b;
-}
-
-int Add(int a, int b)
+# 1 "/usr/lib/gcc-lib/i486-linux/3.3.3/include/limits.h" 1 3 4
+# 122 "/usr/lib/gcc-lib/i486-linux/3.3.3/include/limits.h" 3 4
+# 1 "/usr/include/limits.h" 1 3 4
+# 123 "/usr/lib/gcc-lib/i486-linux/3.3.3/include/limits.h" 2 3 4
+# 8 "/usr/lib/gcc-lib/i486-linux/3.3.3/include/syslimits.h" 2 3 4
+# 12 "/usr/lib/gcc-lib/i486-linux/3.3.3/include/limits.h" 2 3 4
+# 3 "foo.c" 2
+# 12 "foo.c"
+int
+AddInt(int a, int b)
 {
     return a + b;
 }
 
-int Sub(int a, int b)
+void foo(void)
 {
-    return a - b;
+    AddInt(10, 12);
+    AddInt(10, 12);
 }
 
-int Negate(int n)
+
+
+
+
+
+
+int main(int argc, char* argv[], char *argp[])
 {
-    return -n;
-}
-
-void If(int a)
-{
-    if (a)
-        printf("a == 10\n");
-    else
-        printf("a != 10\n");
-}
-
-void Callee(void)
-{
-    printf("Hello World!\n");
-}
-
-void Call(void)
-{
-    Callee();
-}
-
-int main(void)
-{
-    printf("%d\n", 88 || 78);
-    printf("%d\n", Or(88,78));
-
-    FunctionWith1Local();
-    FunctionWith2Local();
-    FunctionWithxLocals();
-
-    return 0;
+# 43 "foo.c"
+    foo();
 }

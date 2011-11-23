@@ -54,6 +54,7 @@ typedef enum {
 //  Variable Declarations
 //---------------------------------------------------------------
 FILE *g_out = NULL;
+static char* g_filename;
 static char* parseString;
 static int pos = 0;
 static int g_lineNum = 1;
@@ -398,7 +399,7 @@ long g_numLocalsPatchPos;
 //---------------------------------------------------------------
 PUBLIC void EmitFunctionPreamble(char *name)
 {
-    fprintf(g_out, ".globl %s\n", name);
+    fprintf(g_out, ".global %s\n", name);
     fprintf(g_out, "\t.type\t%s, @function\n", name);
     fprintf(g_out, "%s:\n", name);
 
@@ -465,6 +466,19 @@ PUBLIC void EmitLiteralStrings(void)
         fprintf(g_out, ".LC%d:\n", i);
         EmitOp1(".string", g_literalStrings[i]);
     }
+}
+
+void EmitPreamble(void)
+{
+    if (g_filename != NULL) {
+        fprintf(g_out, "\t.file \"%s\"\n", g_filename);
+    }
+}
+
+void EmitPostamble(void)
+{
+    EmitGlobalVariableDefinitions();
+    EmitLiteralStrings();
 }
 
 //===============================================================
@@ -883,8 +897,9 @@ void Match(int token)
 // --------------------------------------------------------------
 //  Initialize
 // --------------------------------------------------------------
-void Init(char *s)
+void Init(char *filename, char *s)
 {
+    g_filename = filename;
     parseString = s;
     GetChar();
     Scan();
@@ -1564,6 +1579,7 @@ void VariableDecl(char *name, Type type)
 //---------------------------------------------------------------
 void Root(void)
 {
+    EmitPreamble();
     while (g_token != '\0') {
         Type type;
         if (g_token == IntToken) {
@@ -1588,8 +1604,7 @@ void Root(void)
         }
     }
     Match('\0');
-    EmitGlobalVariableDefinitions();
-    EmitLiteralStrings();
+    EmitPostamble();
 }
 
 char *ReadFile(char *filename)
@@ -1626,10 +1641,10 @@ char *ReadFile(char *filename)
 int main(int argc, char* argv[])
 {
     if (argc == 2) {
-        Init(ReadFile(argv[1]));
+        Init(argv[1], ReadFile(argv[1]));
     }
     else if (argc == 3 && strcmp(argv[1], "-e") == 0) {
-        Init(argv[2]);
+        Init(NULL, argv[2]);
     }
     else {
         fprintf(stderr, "usage: superc file | -e expression\n");

@@ -1,12 +1,12 @@
 #include <stdio.h>
 
-extern int expression();
-
-void printi(int i) {
+void printi(int i)
+{
     printf("%d", i);
 }
 
-void prints(char *s) {
+void prints(char *s)
+{
     printf("%s", s);
 }
 

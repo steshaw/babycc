@@ -1,4 +1,5 @@
-.globl main
+	.file "tests/for.c"
+.global main
 	.type	main, @function
 main:
 	pushl	%ebp
