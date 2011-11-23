@@ -1,44 +1,44 @@
 rm -f *.o superc
 cc -g -Wall --std=c99    superc.c   -o superc
 cc -g -Wall --std=c99   -c -o main.o main.c
-expression 'a' failed with:
+expression 'int a void main(){a}' failed with:
 Error: '=' expected.
-t=8+4 => 12
-t=8-4 => 4
-t=2*3 => 6
-t=6/2 => 3
-t=2+8*3 => 26
-t=(2+8)*3 => 30
-t=2*(3+4) => 14
-t=((3+4)+(5-6))/(1+2) => 2
-t=-1 => -1
-t=-(5-7) => 2
-t=a*b => 0
-t=a*b-b => 0
-t=2*f() => 202
-if 1 {t=4} => 4
-if 1 {t=4} t=5 => 5
-if 1 t=4 else t=5 => 4
-t=10 while (t) { t = t - 1 } => 0
-t=10 do { t = t - 1 } while (t) => 0
-expression 'a=1 break b=2' failed with:
+int n void expression(){n=8+4} => 12
+int n void expression(){n=8-4} => 4
+int n void expression(){n=2*3} => 6
+int n void expression(){n=6/2} => 3
+int n void expression(){n=2+8*3} => 26
+int n void expression(){n=(2+8)*3} => 30
+int n void expression(){n=2*(3+4)} => 14
+int n void expression(){n=((3+4)+(5-6))/(1+2)} => 2
+int n void expression(){n=-1} => -1
+int n void expression(){n=-(5-7)} => 2
+int n int a int b void expression(){n=a*b} => 0
+int n int a int b void expression(){n=a*b-b} => 0
+int n void f(){n=101} void expression(){n=2*f()} => 202
+int n void expression(){if 1 {n=4}} => 4
+int n void expression(){if 1 {n=4} n=5} => 5
+int n void expression(){if 1 n=4 else n=5} => 4
+int n void expression(){n=10 while (n) { n = n - 1 }} => 0
+int n void expression(){n=10 do { n = n - 1 } while (n)} => 0
+expression 'int a int b void expression(){a=1 break b=2}' failed with:
 Error: break statement not within loop.
-t=10 do { break } while (t) => 10
-t=10 do { t=8 break } while (t) => 8
-t=10 while t { break }  => 10
-t=10 while t { t=8 break }  => 8
-a=5 b=-a => -5
-n=-10 => -10
-a=10 n = 5 - -a => 15
-a=10 n = -5 - -a => 5
-a=false || false => 0
-a=false || true => 1
-a=true || false => 1
-a=true || true => 1
-a=false && false => 0
-a=false && true => 0
-a=true && false => 0
-a=true && true => 1
-a = !false => 1
-a = !true => 0
-ifile = 1 => 1
+int n void expression(){n=10 do { break } while (n)} => 10
+int n void expression(){n=10 do { n=8 break } while (n)} => 8
+int n void expression(){n=10 while n { break } } => 10
+int n void expression(){n=10 while n { n=8 break } } => 8
+int a int b void expression(){a=5 b=-a} => -5
+int n void expression(){n=-10} => -10
+int a int n void expression(){a=10 n = 5 - -a} => 15
+int a int n void expression(){a=10 n = -5 - -a} => 5
+int a void expression(){a=false || false} => 0
+int a void expression(){a=false || true} => 1
+int a void expression(){a=true || false} => 1
+int a void expression(){a=true || true} => 1
+int a void expression(){a=false && false} => 0
+int a void expression(){a=false && true} => 0
+int a void expression(){a=true && false} => 0
+int a void expression(){a=true && true} => 1
+int a void expression(){a = !false} => 1
+int a void expression(){a = !true} => 0
+int ifile void expression(){ifile = 1} => 1

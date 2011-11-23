@@ -150,5 +150,30 @@ If:
 	leave
 	ret
 	.size	If, .-If
+	.section	.rodata
+.LC2:
+	.string	"Hello World!\n"
+	.text
+.globl Callee
+	.type	Callee, @function
+Callee:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$8, %esp
+	movl	$.LC2, (%esp)
+	call	printf
+	leave
+	ret
+	.size	Callee, .-Callee
+.globl Call
+	.type	Call, @function
+Call:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$8, %esp
+	call	Callee
+	leave
+	ret
+	.size	Call, .-Call
 	.section	.note.GNU-stack,"",@progbits
 	.ident	"GCC: (GNU) 3.3.3 (Debian 20040401)"

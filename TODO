@@ -1,4 +1,11 @@
 
+o Perhaps revisit tutor9 for some ideas about C function and data
+  declarations.
+
+o See how my code matches with tutor11 (Tiny 1.1). Code up routines
+  for abstracting the code emission and providing a point for
+  target machine porting (It will feel alot like John's dcode...). 
+
 o Procedure calls, with and without parameters
 
 o Local and global variables

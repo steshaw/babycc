@@ -965,3 +965,13 @@ void If(int a)
     else
         printf("a != 10\n");
 }
+
+void Callee(void)
+{
+    printf("Hello World!\n");
+}
+
+void Call(void)
+{
+    Callee();
+}

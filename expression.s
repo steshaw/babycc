@@ -8,4 +8,4 @@ expression:
 	popl	%ebp
 	ret
 	.size	expression, .-expression
-	.comm	ifile,4,4
+	.comm	ifile, 4,4

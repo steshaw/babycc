@@ -37,6 +37,9 @@ typedef enum {
 
     IdentifierToken,
     NumberToken,
+
+    IntToken,
+    VoidToken,
 } Token;
 
 
@@ -49,22 +52,7 @@ static int pos = 0;
 static int lookahead;
 static int numGlobals = 0;
 static char* globalNames[256]; // XXX hard limit :-(
-
-//---------------------------------------------------------------
-// Add global to globalNames array for later emission in the 
-// postamble.
-//---------------------------------------------------------------
-void RegisterGlobal(char *name)
-{
-    // return if registered already
-    for (int i = 0; i < numGlobals; ++i) {
-        if (strcmp(globalNames[i], name) == 0) return; // XXX inefficient
-    }
-
-    // register
-    globalNames[numGlobals] = name;
-    ++numGlobals;
-}
+static char globalTypes[256];   // XXX hard limit :-(
 
 void* SafeMalloc(int n)
 {
@@ -203,6 +191,86 @@ void Expected(char *s)
     Abort(newString);
 }
 
+void UndefinedIdentifier(char *s)
+{
+    fprintf(stderr, "Undefined identifier '%s'\n", s);
+    exit(1);
+}
+
+void DuplicateIdentifier(char *s)
+{
+    fprintf(stderr, "Duplicate identifier '%s'\n", s);
+    exit(1);
+}
+
+
+int NameIndex(char *name)
+{
+    for (int i = 0; i < numGlobals; ++i) {
+        if (strcmp(globalNames[i], name) == 0) return i;
+        // XXX this could be inefficient - could replace with
+        // XXX pointer equality if symbols are first "interned"
+    }
+    return numGlobals;
+}
+
+bool IsNameDefined(char *name)
+{
+    for (int i = 0; i < numGlobals; ++i) {
+        if (strcmp(globalNames[i], name) == 0) return true;
+        // XXX this could be inefficient - could replace with
+        // XXX pointer equality if symbols are first "interned"
+    }
+    return false;
+}
+
+typedef enum {
+    VariableType,
+    FunctionType,
+} NameType;
+
+void CheckDefined(char *name)
+{
+    if (!IsNameDefined(name)) {
+        UndefinedIdentifier(name);
+    }
+}
+
+/*
+ * Probably not need with C
+ */
+/*
+void CheckVarDefined(char *name)
+{
+    int index = NameIndex(name);
+    if (index == numGlobals) {
+        UndefinedIdentifier(name);
+    }
+    else if (globalTypes[index] != VariableType) {
+        fprintf(stderr, "%s should be a variable!\n", name);
+        exit(1);
+    }
+}
+*/
+
+
+//---------------------------------------------------------------
+// Add global to globalNames array for later emission in the 
+// postamble.
+//---------------------------------------------------------------
+void RegisterGlobal(char *name, NameType type)
+{
+    if (IsNameDefined(name)) {
+        DuplicateIdentifier(name);
+    }
+
+    // register
+    globalNames[numGlobals] = name;
+    globalTypes[numGlobals] = type;
+    ++numGlobals;
+}
+
+
 typedef struct {
     char *keyword;
     int length;
@@ -219,6 +287,8 @@ Keyword keywords[] = {
     DEF_KEYWORD("break", BreakToken),
     DEF_KEYWORD("true", TrueToken),
     DEF_KEYWORD("false", FalseToken),
+    DEF_KEYWORD("int", IntToken),
+    DEF_KEYWORD("void", VoidToken),
 };
 
 
@@ -253,17 +323,6 @@ Keyword operators[] = {
 
 void LookupOperator(char *s)
 {
-    for (int i = 0; i < ARRAYSIZE(operators); ++i) {
-        if (strncmp(s, operators[i].keyword, operators[i].length) == 0) {
-            for (int j = 0; j < operators[i].length; ++j) {
-                GetChar();
-            }
-            g_tokenValue = operators[i].keyword;
-            g_token = operators[i].token;
-            return;
-        }
-    }
-    assert(false && "unreachable");
 }
 
 
@@ -289,23 +348,21 @@ bool IsOp()
 //---------------------------------------------------------------
 void GetOperator(void)
 {
-/*
-    printf("GetOperator() lookahead = '%c'\n", lookahead);
-    printf("GetOperator() '%s'\n", parseString+pos-3);
-    for (int i = 0; i < ARRAYSIZE(operators); ++i) {
-        if (strncmp(parseString+pos-3, operators[i].keyword,
-                    operators[i].length) == 0)
-        {
-            pos += operators[i].length - 1;
-            return operators[i].keyword;
-        }
-    }
-    assert(false && "cannot reach here in GetOperator()");
-*/
-
     if (!IsOp(lookahead)) Expected("Operator");
 
-    LookupOperator(parseString+pos-1);
+    //LookupOperator(parseString+pos-1);
+    char *s = parseString+pos-1;
+    for (int i = 0; i < ARRAYSIZE(operators); ++i) {
+        if (strncmp(s, operators[i].keyword, operators[i].length) == 0) {
+            for (int j = 0; j < operators[i].length; ++j) {
+                GetChar();
+            }
+            g_tokenValue = operators[i].keyword;
+            g_token = operators[i].token;
+            return;
+        }
+    }
+    assert(false && "unreachable");
 }
 
 // --------------------------------------------------------------
@@ -386,15 +443,8 @@ void Scan(void)
         g_tokenValue = "EOS";
     }
     else {
-        printf("lookahead = '%c'\n", lookahead);
-        assert(false && "bad input");
-        /*
-        // set token value to string with lookahead character in it
-        char *g_tokenValue = GcStrDup(" ");
-        g_tokenValue[0] = lookahead;
-        GetChar();
-        g_token = OperatorToken;
-        */
+        fprintf(stderr, "input character = '%c'\n", lookahead);
+        Error("bad character in input");
     }
 }
 
@@ -458,13 +508,15 @@ void Identifier(void)
         // function call
         Match('(');
         //Expression(); // XXX not doing parameters yet
+        CheckDefined(name);
         EmitOp1("call", name);
         Match(')');
     }
     else {
         // variable reference
         EmitOp2("movl", name, "%eax");
-        RegisterGlobal(name);
+        //RegisterGlobal(name);
+        CheckDefined(name);
     }
 }
 
@@ -783,7 +835,8 @@ void Assignment(void)
 {
     char *name = g_tokenValue;
     Match(IdentifierToken);
-    RegisterGlobal(name);
+    //RegisterGlobal(name);
+    CheckDefined(name);
     Match('=');
     BooleanExpression();
     /*
@@ -935,14 +988,14 @@ void EmitFunctionPostamble(char *name)
 void EmitGlobalVariableDefinitions(void)
 {
     for (int i = 0; i < numGlobals; ++i) {
-        char op[256];
-        sprintf(op, ".comm\t%s,4,4", globalNames[i]);
-        EmitLn(op);
+        if (globalTypes[i] == VariableType) {
+            EmitOp2(".comm", globalNames[i], "4,4");
+        }
     }
 }
 
 //---------------------------------------------------------------
-void Root(void)
+void ExpressionFunction(void)
 {
     EmitFunctionPreamble("expression");
 
@@ -959,57 +1012,68 @@ void Root(void)
     Match('\0'); // end of stream
 }
 
-/*
-void OutputScannerStream(void)
+
+typedef enum {
+    Int,
+    Void
+} Type;
+
+
+void FunctionDecl(char *name, Type type)
 {
-    do {
-        switch (g_token) {
-            case IdentifierToken: printf("Identifier "); break;
-            case NumberToken: printf("Number "); break;
-            //case OperatorToken: printf("Operator "); break;
-            case IfToken: 
-            case ElseToken:
-            case WhileToken:
-            case DoToken:
-            case BreakToken:
-                printf("Keyword "); 
-                break;
+    Match('(');
+    Match(')');
+    EmitFunctionPreamble(name);
+    Block(NULL);
+    EmitFunctionPostamble(name);
+    //fprintf(stderr, "func %s : %s\n", name, (type == Int)? "int" : "void");
+    RegisterGlobal(name, FunctionType);
+}
 
-            case TrueToken: printf("True "); break;
-            case FalseToken: printf("False "); break;
+void VariableDecl(char *name, Type type)
+{
+    if (type == Void) {
+        Abort("variable cannot be of type void");
+    }
+    //fprintf(stderr, "var %s : %s\n", name, (type == Int)? "int" : "void");
+    RegisterGlobal(name, VariableType);
+}
 
-            case OrToken: 
-            case AndToken:
-            case EqualsToken:
-            case NotEqualsToken:
-            case '<':
-            case '>':
-            case '+':
-            case '-':
-            case '/':
-            case '*':
-            case '=':
-                printf("Operator ");
-                break;
+//---------------------------------------------------------------
+// root ::= type name
+//---------------------------------------------------------------
+void Root(void)
+{
+    while (g_token != '\0') {
+        Type type;
+        if (g_token == IntToken) {
+            Match(IntToken);
+            type = Int;
+        }
+        else if (g_token == VoidToken) {
+            Match(VoidToken);
+            type = Void;
+        }
+        else {
+            Abort("expecting 'int' or 'void'");
+        };
 
-            case '\0': break;
-            default:
-                printf("Other ");
-                break;
+        char *name = g_tokenValue;
+        Match(IdentifierToken);
+        if (g_token == '(') {
+            FunctionDecl(name, type);
+        }
+        else {
+            VariableDecl(name, type);
         }
 
-        printf("%s\n", g_tokenValue);
-
-        Scan();
     }
-    while (g_token != '\0');
+    Match('\0');
+    EmitGlobalVariableDefinitions();
 }
-*/
 
 // --------------------------------------------------------------
-//  Main Program
-// --------------------------------------------------------------
-int main(int argc, char*argv[])
+int main(int argc, char* argv[])
 {
     if (argc != 2) {
         fprintf(stderr, "usage: superc \"<expression>\"\n");

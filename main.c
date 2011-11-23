@@ -1,9 +1,11 @@
 #include <stdio.h>
 
-int f()
+/*
+void f()
 {
     return 101;
 }
+*/
 
 extern int expression();
 
