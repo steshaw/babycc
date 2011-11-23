@@ -30,6 +30,19 @@ check: all main.o
 	check "t=10 while t { break } " 10
 	check "t=10 while t { t=8 break } " 8
 
+	check "a=false || false" 0
+	check "a=false || true" 1
+	check "a=true || false" 1
+	check "a=true || true" 1
+
+	check "a=false && false" 0
+	check "a=false && true" 0
+	check "a=true && false" 0
+	check "a=true && true" 1
+
+	check "a = !false" 1
+	check "a = !true" 0
+
 .PHONY: clean
 clean:
 	-rm -f *.o superc

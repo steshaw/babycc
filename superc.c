@@ -666,7 +666,7 @@ void Assignment(void)
     char *name = GetName();
     RegisterGlobal(name);
     Match('=');
-    Expression();
+    BooleanExpression();
     char op[256];
     sprintf(op, "movl %%eax, %s", name);
     EmitLn(op);
@@ -680,8 +680,7 @@ void If(char *innermostLoopLabel)
     Match(IF);
     char *label1 = NewLabel();
     char *label2 = label1;
-    //Condition();
-    Expression(); // XXX for the time being just do an expression
+    BooleanExpression();
 
     // skip if condition not true
     {
@@ -714,8 +713,7 @@ void While()
     Match(WHILE);
     char *conditionLabel = NewLabel();
     EmitLabel(conditionLabel);
-    //Condition();
-    Expression(); // XXX for the time being just do an expression
+    BooleanExpression();
 
     char *endLabel = NewLabel();
     // terminate loop if condition is not true (i.e. equals zero)
@@ -736,7 +734,7 @@ void DoWhile()
     EmitLabel(startLabel);
     Statement(endLabel);
     Match(WHILE);
-    Expression();
+    BooleanExpression();
     EmitOp1("jne", startLabel);
     EmitLabel(endLabel);
 }
@@ -847,6 +845,7 @@ void Top(void)
     Match('\0'); // end of stream
 }
 
+/*
 //---------------------------------------------------------------
 void BooleanTop(void)
 {
@@ -859,6 +858,7 @@ void BooleanTop(void)
 
     Match('\0'); // end of stream
 }
+*/
 
 // --------------------------------------------------------------
 //  Main Program
@@ -870,8 +870,7 @@ int main(int argc, char*argv[])
         exit(2);
     }
     Init(argv[1]);
-    //Top();
-    BooleanTop();
+    Top();
 
     return 0;
 }

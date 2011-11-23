@@ -3,8 +3,12 @@
 expression:
 	pushl	%ebp
 	movl	%esp, %ebp
-	movl	t, %eax
+	movl	$1, %eax
+	cmpl	$0, %eax
+	sete	%al
+	movzbl	%al, %eax
+	movl %eax, a
 	popl	%ebp
 	ret
 	.size	expression, .-expression
-	.comm	t,4,4
+	.comm	a,4,4
