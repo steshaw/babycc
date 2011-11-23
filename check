@@ -1,9 +1,16 @@
 #!/bin/sh
 
 expression=$1
+expected=$2
 
 echo "expression is '$expression'"
 superc "$expression" >expression.s && 
     cat expression.s && 
-    gcc expression.s main.o -o expression && 
-    ./expression
+    gcc expression.s main.o -o expression
+if [ $? -eq 0 ]; then
+    ./expression >expression.out
+    cat expression.out
+    if [ "`<expression.out`" -ne "$expected" ]; then
+        echo "EXPECTED $expected"
+    fi
+fi

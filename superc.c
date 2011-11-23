@@ -1,7 +1,17 @@
+/**
+ *
+ * eax is used as the "accumulator" register
+ * ebx is used as the "temporary" register (used to get store value from the 
+ *                                          expression stack)
+ *
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+
+typedef int bool;
 
 //===============================================================
 // Lexer
@@ -33,10 +43,10 @@ void *GcMalloc(int n)
 }
 
 
-// --------------------------------------------------------------
-//  Read New Character From Input Stream
-// --------------------------------------------------------------
-void GetChar()
+///---------------------------------------------------------------
+///  Read New Character From Input Stream
+///---------------------------------------------------------------
+void GetChar(void)
 {
    //lookahead = getchar();
    lookahead = parseString[i];
@@ -90,7 +100,6 @@ void Match(char c)
         Expected(s);
     }
 }
-
 
 // --------------------------------------------------------------
 //  Get an Identifier
@@ -147,37 +156,87 @@ void Init(char *s)
 // Parser
 //===============================================================
 
+
 //---------------------------------------------------------------
-void Term()
+// factor ::= "(" expression ")" | number
+//---------------------------------------------------------------
+void Factor(void)
 {
-    char s[256];
-    sprintf(s, "movl\t$%c, %%eax", GetNum());
-    EmitLn(s);
+    void Expression(void );
+
+    if (lookahead == '(') {
+        Match('(');
+        Expression();
+        Match(')');
+    }
+    else {
+        char s[256];
+        sprintf(s, "movl\t$%c, %%eax", GetNum());
+        EmitLn(s);
+    }
+}
+
+//---------------------------------------------------------------
+void Multiply(void)
+{
+    Match('*');
+    Factor();
+    EmitLn("popl\t%ebx");
+    EmitLn("imul\t%ebx,%eax");
+}
+
+//---------------------------------------------------------------
+void Divide(void)
+{
+    Match('/');
+    Factor();
+    EmitLn("movl\t%eax,%ebx");
+    EmitLn("popl\t%eax");
+    EmitLn("cltd");
+    EmitLn("idiv\t%ebx,%eax");
+}
+
+//---------------------------------------------------------------
+// Recnognise a "term"
+//---------------------------------------------------------------
+void Term(void)
+{
+    Factor();
+    while (lookahead == '*' || lookahead == '/') {
+        EmitLn("push\t%eax");
+        switch (lookahead) {
+            case '*': Multiply(); break;
+            case '/': Divide(); break;
+            default: Expected("'*' or '/'");
+        };
+    }
 }
 
 //---------------------------------------------------------------
 // Recognize and Translate an Add }
 //---------------------------------------------------------------
-void Add()
+void Add(void)
 {
-   Match('+');
-   Term();
-   EmitLn("addl\t%ebx,%eax");
+    Match('+');
+    Term();
+    EmitLn("popl\t%ebx");
+    EmitLn("addl\t%ebx,%eax");
 }
 
 //---------------------------------------------------------------
 // Recognize and Translate a Subtract }
 //---------------------------------------------------------------
-void Subtract()
+void Subtract(void)
 {
-   Match('-');
-   Term();
-   EmitLn("subl\t%ebx,%eax");
-   EmitLn("negl\t%eax");
+    Match('-');
+    Term();
+    EmitLn("popl\t%ebx");
+    EmitLn("subl\t%ebx,%eax");
+    EmitLn("negl\t%eax");
 }
 
 //---------------------------------------------------------------
-void EmitPreamble()
+void EmitPreamble(void)
 {
     printf(".globl expression\n");
     printf("\t.type\texpression, @function\n");
@@ -189,28 +248,45 @@ void EmitPreamble()
 }
 
 //---------------------------------------------------------------
-void EmitPostamble()
+void EmitPostamble(void)
 {
-    EmitLn("popl\t%ebp");
+    EmitLn("pop\t%ebp");
     EmitLn("ret");
+}
+
+//---------------------------------------------------------------
+bool IsAddOp()
+{
+    return lookahead == '+' || lookahead == '-';
 }
 
 //---------------------------------------------------------------
 // Parse and Translate a Math Expression
 //---------------------------------------------------------------
-void Expression()
+void Expression(void)
 {
-    EmitPreamble();
+    if (IsAddOp(lookahead)) {
+        EmitLn("movl\t$0,%eax");
+    }
+    else Term();
 
-    Term();
-    while (lookahead == '+' || lookahead == '-') {
-        EmitLn("movl\t%eax,%ebx");
+    while (IsAddOp(lookahead)) {
+        EmitLn("push\t%eax");
         switch (lookahead) {
             case '+': Add(); break;
             case '-': Subtract(); break;
             default: Expected("'+' or '-'");
         }
     }
+
+}
+
+//---------------------------------------------------------------
+void Top(void)
+{
+    EmitPreamble();
+
+    Expression();
 
     EmitPostamble();
 
@@ -227,7 +303,7 @@ int main(int argc, char*argv[])
         exit(2);
     }
     Init(argv[1]);
-    Expression();
+    Top();
 
     return 0;
 }

@@ -1,0 +1,70 @@
+rm -f *.o superc
+cc -Wall    superc.c   -o superc
+cc -Wall   -c -o main.o main.c
+check "8+4"
+expression is '8+4'
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	movl	$8, %eax
+	push	%eax
+	movl	$4, %eax
+	popl	%ebx
+	addl	%ebx,%eax
+	pop	%ebp
+	ret
+expression() => 12
+./check: line 13: [: expression(): integer expression expected
+check "8-4"
+expression is '8-4'
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	movl	$8, %eax
+	push	%eax
+	movl	$4, %eax
+	popl	%ebx
+	subl	%ebx,%eax
+	negl	%eax
+	pop	%ebp
+	ret
+expression() => 4
+./check: line 13: [: expression(): integer expression expected
+check "2*3"
+expression is '2*3'
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	movl	$2, %eax
+	push	%eax
+	movl	$3, %eax
+	popl	%ebx
+	imul	%ebx,%eax
+	pop	%ebp
+	ret
+expression() => 6
+./check: line 13: [: expression(): integer expression expected
+check "6/2"
+expression is '6/2'
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	movl	$6, %eax
+	push	%eax
+	movl	$2, %eax
+	movl	%eax,%ebx
+	popl	%eax
+	cltd
+	idiv	%ebx,%eax
+	pop	%ebp
+	ret
+expression() => 3
+./check: line 13: [: expression(): integer expression expected

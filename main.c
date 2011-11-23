@@ -4,6 +4,6 @@ extern int expression();
 
 int main()
 {
-    printf("expression() => %d\n", expression());
+    printf("%d\n", expression());
     return 0;
 }

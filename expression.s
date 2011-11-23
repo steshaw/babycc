@@ -3,122 +3,16 @@
 expression:
 	pushl	%ebp
 	movl	%esp, %ebp
-	movl	$8, %eax
-	movl	%eax,%ebx
-	movl	$2, %eax
+	movl	$0,%eax
+	push	%eax
+	movl	$5, %eax
+	push	%eax
+	movl	$7, %eax
+	popl	%ebx
 	subl	%ebx,%eax
 	negl	%eax
-	movl	%eax,%ebx
-	movl	$2, %eax
+	popl	%ebx
 	subl	%ebx,%eax
 	negl	%eax
-	movl	%eax,%ebx
-	movl	$2, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$2, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$2, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$2, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$2, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	movl	%eax,%ebx
-	movl	$9, %eax
-	subl	%ebx,%eax
-	negl	%eax
-	popl	%ebp
+	pop	%ebp
 	ret
