@@ -8,9 +8,9 @@ fi
 expression=$1
 expected=$2
 
-echo "expression is '$expression'"
 superc "$expression" >expression.s 2>superc.out
 if [ $? -ne 0 ]; then
+    echo "expression '$expression' failed with:"
     cat superc.out
     if [ "`<superc.out`" != "$expected" ]; then
         echo "EXPECTED $expected"
@@ -18,15 +18,15 @@ if [ $? -ne 0 ]; then
     fi
     exit 0
 fi
-cat expression.s
+#cat expression.s
 gcc expression.s main.o -o expression
 if [ $? -ne 0 ]; then
     exit 1
 fi
 ./expression >expression.out 2>&1
-echo -n "=> "
+echo -n "$expression => "
 cat expression.out
-if [ "`<expression.out`" -ne "$expected" ]; then
+if [ "`<expression.out`" != "$expected" ]; then
     echo "EXPECTED $expected"
     exit 1
 fi

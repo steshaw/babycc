@@ -54,6 +54,40 @@
 #include <ctype.h>
 #include <stdbool.h>
 
+
+/*
+XXX here is an example of using snprintf from the man page
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+char *
+make_message(const char *fmt, ...) {
+ // Guess we need no more than 100 bytes.
+ int n, size = 100;
+ char *p;
+ va_list ap;
+ if ((p = malloc (size)) == NULL)
+    return NULL;
+ while (1) {
+    // Try to print in the allocated space.
+    va_start(ap, fmt);
+    n = vsnprintf (p, size, fmt, ap);
+    va_end(ap);
+    // If that worked, return the string.
+    if (n > -1 && n < size)
+       return p;
+    // Else try again with more space.
+    if (n > -1)    // glibc 2.1
+       size = n+1; // precisely what is needed
+    else           // glibc 2.0
+       size *= 2;  // twice the old size
+    if ((p = realloc (p, size)) == NULL)
+       return NULL;
+ }
+}
+*/
+
+
 enum Token {
     IF = 256, // Start after the ascii characters 0-255
     ELSE,
@@ -69,6 +103,8 @@ enum Token {
     LessThanToken,
     GreaterThanToken,
 };
+
+
 
 //---------------------------------------------------------------
 //  Variable Declarations
@@ -163,6 +199,16 @@ void EmitOp1(char *instruction, char *p1)
 {
     char op[256];
     sprintf(op, "%s\t%s\n", instruction, p1);
+    Emit(op);
+}
+
+// --------------------------------------------------------------
+// Emit operation with two parameters
+// --------------------------------------------------------------
+void EmitOp2(char *instruction, char *p1, char *p2)
+{
+    char op[256];
+    sprintf(op, "%s\t%s, %s\n", instruction, p1, p2);
     Emit(op);
 }
 
@@ -361,6 +407,26 @@ void Init(char *s)
 // Parser
 //===============================================================
 
+void Identifier(void)
+{
+    char *name = GetName();
+    if (lookahead == '(') {
+        // function call
+        Match('(');
+        //Expression(); // XXX not doing parameters yet
+        char s[256];
+        sprintf(s, "call\t%s", name);
+        EmitLn(s);
+        Match(')');
+    }
+    else {
+        // variable reference
+        char s[256];
+        sprintf(s, "movl\t%s, %%eax", name);
+        EmitLn(s);
+        RegisterGlobal(name);
+    }
+}
 
 //---------------------------------------------------------------
 // factor ::= "(" expression ")"
@@ -377,29 +443,33 @@ void Factor(void)
         Match(')');
     }
     else if (isalpha(lookahead)) {
-        char *name = GetName();
-        if (lookahead == '(') {
-            // function call
-            Match('(');
-            //Expression(); // XXX not doing parameters yet
-            char s[256];
-            sprintf(s, "call\t%s", name);
-            EmitLn(s);
-            Match(')');
-        }
-        else {
-            // variable reference
-            char s[256];
-            sprintf(s, "movl\t%s, %%eax", name);
-            EmitLn(s);
-            RegisterGlobal(name);
-        }
+        Identifier();
     }
     else {
-        char s[256];
-        sprintf(s, "movl\t$%s, %%eax", GetNum());
-        EmitLn(s);
+        char num[256];
+        sprintf(num, "$%s", GetNum());
+        EmitOp2("movl", num, "%eax");
     }
+}
+
+void SignedFactor(void)
+{
+    if (lookahead == '+') {
+        GetChar();
+    }
+    else if (lookahead == '-') {
+        GetChar();
+        if (isdigit(lookahead)) {
+            char negNum[256];
+            sprintf(negNum, "$-%s", GetNum());
+            EmitOp2("movl", negNum, "%eax");
+        }
+        else {
+            Factor();
+            EmitLn("negl %eax");
+        }
+    }
+    else Factor();
 }
 
 //---------------------------------------------------------------
@@ -427,7 +497,7 @@ void Divide(void)
 //---------------------------------------------------------------
 void Term(void)
 {
-    Factor();
+    SignedFactor();
     while (lookahead == '*' || lookahead == '/') {
         EmitLn("pushl\t%eax");
         switch (lookahead) {
@@ -471,10 +541,7 @@ bool IsAddOp()
 //---------------------------------------------------------------
 void Expression(void)
 {
-    if (IsAddOp(lookahead)) {
-        EmitLn("movl\t$0,%eax");
-    }
-    else Term();
+    Term();
 
     while (IsAddOp(lookahead)) {
         EmitLn("pushl\t%eax");
@@ -667,9 +734,12 @@ void Assignment(void)
     RegisterGlobal(name);
     Match('=');
     BooleanExpression();
+    /*
     char op[256];
     sprintf(op, "movl %%eax, %s", name);
     EmitLn(op);
+    */
+    EmitOp2("movl", "%eax", name);
 }
 
 //---------------------------------------------------------------

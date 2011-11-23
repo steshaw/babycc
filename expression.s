@@ -7,7 +7,7 @@ expression:
 	cmpl	$0, %eax
 	sete	%al
 	movzbl	%al, %eax
-	movl %eax, a
+	movl	%eax, a
 	popl	%ebp
 	ret
 	.size	expression, .-expression
