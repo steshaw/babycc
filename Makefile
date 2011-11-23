@@ -12,7 +12,7 @@ example: example.o
 
 .PHONY: check
 check: all main.o
-	@check "void expression(){int a a=1 }" 1
+	@check "void expression(){int a; a=1; }" 1
 	@check "void expression(){int a int b a=1 b=2}" 2
 	@check "void expression(){int a int b int c a=1 b=2 c=3}" 3
 	@check "void expression(){int a int b int c int d a=1 b=2 c=3 d=4}" 4
@@ -29,11 +29,11 @@ check: all main.o
 		    p2=6                                            \
 		}" 6
 
-	@check "int a void main(){a}" "Error: '=' expected."
-	@check "int n void expression(){n=8+4}" 12
-	@check "int n void expression(){n=8-4}" 4
-	@check "int n void expression(){n=2*3}" 6
-	@check "int n void expression(){n=6/2}" 3
+	@check "int a; void main(){a}" "Error: '=' expected."
+	@check "int n; void expression(){n=8+4}" 12
+	@check "int n; void expression(){n=8-4}" 4
+	@check "int n; void expression(){n=2*3}" 6
+	@check "int n; void expression(){n=6/2}" 3
 	@check "int n void expression(){n=2+8*3}" 26
 	@check "int n void expression(){n=(2+8)*3}" 30
 	@check "int n void expression(){n=2*(3+4)}" 14

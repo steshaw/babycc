@@ -2,7 +2,7 @@ rm -f *.o superc
 cc -g -Wall --std=c99    superc.c   -o superc
 cc -g -Wall --std=c99   -c -o main.o main.c
 -------------------------------------------------------------------------
-EXPRESSION: void expression(){int a a=1 }
+EXPRESSION: void expression(){int a; a=1; }
 -------------------------------------------------------------------------
 .globl expression
 	.type	expression, @function
@@ -15,7 +15,7 @@ expression:
 	leave
 	ret
 	.size	expression, .-expression
-void expression(){int a a=1 } => 1
+void expression(){int a; a=1; } => 1
 -------------------------------------------------------------------------
 EXPRESSION: void expression(){int a int b a=1 b=2}
 -------------------------------------------------------------------------
@@ -99,12 +99,12 @@ expression:
 	.size	expression, .-expression
 void expression(p1, p2) {                int a                                        int b                                        int c                                        int d                                        a=1                                        b=2                                        c=3                                        d=4                                             p1=5                                             p2=6                                             } => 6
 -------------------------------------------------------------------------
-EXPRESSION: int a void main(){a}
+EXPRESSION: int a; void main(){a}
 -------------------------------------------------------------------------
-expression 'int a void main(){a}' failed with:
+expression 'int a; void main(){a}' failed with:
 Error: '=' expected.
 -------------------------------------------------------------------------
-EXPRESSION: int n void expression(){n=8+4}
+EXPRESSION: int n; void expression(){n=8+4}
 -------------------------------------------------------------------------
 .globl expression
 	.type	expression, @function
@@ -122,9 +122,9 @@ expression:
 	ret
 	.size	expression, .-expression
 	.comm	n, 4,4
-int n void expression(){n=8+4} => 12
+int n; void expression(){n=8+4} => 12
 -------------------------------------------------------------------------
-EXPRESSION: int n void expression(){n=8-4}
+EXPRESSION: int n; void expression(){n=8-4}
 -------------------------------------------------------------------------
 .globl expression
 	.type	expression, @function
@@ -143,9 +143,9 @@ expression:
 	ret
 	.size	expression, .-expression
 	.comm	n, 4,4
-int n void expression(){n=8-4} => 4
+int n; void expression(){n=8-4} => 4
 -------------------------------------------------------------------------
-EXPRESSION: int n void expression(){n=2*3}
+EXPRESSION: int n; void expression(){n=2*3}
 -------------------------------------------------------------------------
 .globl expression
 	.type	expression, @function
@@ -163,9 +163,9 @@ expression:
 	ret
 	.size	expression, .-expression
 	.comm	n, 4,4
-int n void expression(){n=2*3} => 6
+int n; void expression(){n=2*3} => 6
 -------------------------------------------------------------------------
-EXPRESSION: int n void expression(){n=6/2}
+EXPRESSION: int n; void expression(){n=6/2}
 -------------------------------------------------------------------------
 .globl expression
 	.type	expression, @function
@@ -185,7 +185,7 @@ expression:
 	ret
 	.size	expression, .-expression
 	.comm	n, 4,4
-int n void expression(){n=6/2} => 3
+int n; void expression(){n=6/2} => 3
 -------------------------------------------------------------------------
 EXPRESSION: int n void expression(){n=2+8*3}
 -------------------------------------------------------------------------

@@ -706,7 +706,7 @@ void Scan(void)
     }
     else if (lookahead == '{' || lookahead == '}' ||
              lookahead == '(' || lookahead == ')' ||
-             lookahead == ',')
+             lookahead == ',' || lookahead == ';')
     {
         g_token = lookahead;
         char *g_tokenValue = GcStrDup(" ");
@@ -1208,6 +1208,9 @@ void Statement(char* innermostLoopLabel)
     else {
         Assignment();
     }
+    if (g_token == ';') {
+        Match(';');
+    }
 }
 
 void Statements(char *innermostLoopLabel)
@@ -1229,6 +1232,9 @@ void LocalDeclarations(void)
         Match(IdentifierToken);
         RegisterParam(name);
         ++g_localDeclarations;
+        if (g_token == ';') {
+            Match(';');
+        }
     }
 }
 
@@ -1298,6 +1304,9 @@ void VariableDecl(char *name, Type type)
     }
     //fprintf(stderr, "var %s : %s\n", name, (type == Int)? "int" : "void");
     RegisterGlobal(name, VariableType, -1);
+    if (g_token == ';') {
+        Match(';');
+    }
 }
 
 //---------------------------------------------------------------
