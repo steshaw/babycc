@@ -1,7 +1,5 @@
 
-o See how my code matches with tutor11 (Tiny 1.1). Code up routines
-  for abstracting the code emission and providing a point for
-  target machine porting (It will feel alot like John's dcode...). 
+Todo items from Crenshaw tutorials:
 
 o Procedure calls, with and without parameters
 
@@ -19,7 +17,15 @@ o Tree-structured parsers and intermediate languages
 
 o Optimization
 
+Other items:
 
+o Get Pascal creator's Niklaus Wirth compiler book again (it has the idea of 
+  lazy emission of instructions and combining them in the stream before
+  they are written. "Wirthian compilers" are known to be fast and produce
+  code comparable with those using an IL).
+
+o Check out John's dcode again - it may be useful for structuring
+  retargetable code emission.
 
 o Boolean representation. There is no choice for C: false is 0 and
   true is non-zero and usually 1. A better choice may be 0 for false

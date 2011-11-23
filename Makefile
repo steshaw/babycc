@@ -58,6 +58,21 @@ check: all main.o
 	@check "int ifile void expression(){ifile = 1}" 1
 	@check 'int i int foo(){i=10} void expression(){i=foo()}' 10
 
+	@check "int t int foo(){t=10} int expression(argc, argv) {t=foo()}" 10
+	@check "int t int foo(a){t=10} int expression(argc, argv) {t=foo(1)}" 10
+	@check "int t int foo(a){t=10} int expression(argc, argv) {t=foo(1,2)}" \
+	    "Error: attempt call with incorrect number of arguments."
+	@check "int a int b int foo(n) {a=n}void expression(){b = foo(9) a=a }" 9
+	@check "int a                                     \
+	        int b                                     \
+		int foo(n,m) {                            \
+		    a = m                                 \
+		}                                         \
+		void expression() {                       \
+		    b = foo(8,9)                          \
+		    a = a                                 \
+		}" 9
+
 .PHONY: clean
 clean:
 	-rm -f *.o superc

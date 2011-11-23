@@ -1,5 +1,95 @@
 	.file	"example.c"
+	.section	.rodata
+.LC0:
+	.string	"%d\n"
 	.text
+.globl Func1
+	.type	Func1, @function
+Func1:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$8, %esp
+	movl	8(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC0, (%esp)
+	call	printf
+	leave
+	ret
+	.size	Func1, .-Func1
+.globl Func2
+	.type	Func2, @function
+Func2:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$8, %esp
+	movl	8(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC0, (%esp)
+	call	printf
+	movl	12(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC0, (%esp)
+	call	printf
+	leave
+	ret
+	.size	Func2, .-Func2
+.globl Func3
+	.type	Func3, @function
+Func3:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$8, %esp
+	movl	8(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC0, (%esp)
+	call	printf
+	movl	12(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC0, (%esp)
+	call	printf
+	movl	16(%ebp), %eax
+	movl	%eax, 4(%esp)
+	movl	$.LC0, (%esp)
+	call	printf
+	leave
+	ret
+	.size	Func3, .-Func3
+.globl CallFunc1
+	.type	CallFunc1, @function
+CallFunc1:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$8, %esp
+	movl	$99, (%esp)
+	call	Func1
+	leave
+	ret
+	.size	CallFunc1, .-CallFunc1
+.globl CallFunc2
+	.type	CallFunc2, @function
+CallFunc2:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$8, %esp
+	movl	$99, 4(%esp)
+	movl	$98, (%esp)
+	call	Func2
+	leave
+	ret
+	.size	CallFunc2, .-CallFunc2
+.globl CallFunc3
+	.type	CallFunc3, @function
+CallFunc3:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$24, %esp
+	movl	$99, 8(%esp)
+	movl	$98, 4(%esp)
+	movl	$97, (%esp)
+	call	Func3
+	leave
+	ret
+	.size	CallFunc3, .-CallFunc3
 .globl Equals
 	.type	Equals, @function
 Equals:
@@ -67,13 +157,13 @@ Or:
 	subl	$4, %esp
 	movl	$0, -4(%ebp)
 	cmpl	$0, 8(%ebp)
-	jne	.L8
+	jne	.L14
 	cmpl	$0, 12(%ebp)
-	jne	.L8
-	jmp	.L7
-.L8:
+	jne	.L14
+	jmp	.L13
+.L14:
 	movl	$1, -4(%ebp)
-.L7:
+.L13:
 	movl	-4(%ebp), %eax
 	leave
 	ret
@@ -86,11 +176,11 @@ And:
 	subl	$4, %esp
 	movl	$0, -4(%ebp)
 	cmpl	$0, 8(%ebp)
-	je	.L10
+	je	.L16
 	cmpl	$0, 12(%ebp)
-	je	.L10
+	je	.L16
 	movl	$1, -4(%ebp)
-.L10:
+.L16:
 	movl	-4(%ebp), %eax
 	leave
 	ret
@@ -127,9 +217,9 @@ Negate:
 	ret
 	.size	Negate, .-Negate
 	.section	.rodata
-.LC0:
-	.string	"a == 10\n"
 .LC1:
+	.string	"a == 10\n"
+.LC2:
 	.string	"a != 10\n"
 	.text
 .globl If
@@ -139,19 +229,19 @@ If:
 	movl	%esp, %ebp
 	subl	$8, %esp
 	cmpl	$0, 8(%ebp)
-	je	.L15
-	movl	$.LC0, (%esp)
-	call	printf
-	jmp	.L14
-.L15:
+	je	.L21
 	movl	$.LC1, (%esp)
 	call	printf
-.L14:
+	jmp	.L20
+.L21:
+	movl	$.LC2, (%esp)
+	call	printf
+.L20:
 	leave
 	ret
 	.size	If, .-If
 	.section	.rodata
-.LC2:
+.LC3:
 	.string	"Hello World!\n"
 	.text
 .globl Callee
@@ -160,7 +250,7 @@ Callee:
 	pushl	%ebp
 	movl	%esp, %ebp
 	subl	$8, %esp
-	movl	$.LC2, (%esp)
+	movl	$.LC3, (%esp)
 	call	printf
 	leave
 	ret
@@ -175,10 +265,6 @@ Call:
 	leave
 	ret
 	.size	Call, .-Call
-	.section	.rodata
-.LC3:
-	.string	"%d\n"
-	.text
 .globl main
 	.type	main, @function
 main:
@@ -189,13 +275,13 @@ main:
 	movl	$0, %eax
 	subl	%eax, %esp
 	movl	$1, 4(%esp)
-	movl	$.LC3, (%esp)
+	movl	$.LC0, (%esp)
 	call	printf
 	movl	$78, 4(%esp)
 	movl	$88, (%esp)
 	call	Or
 	movl	%eax, 4(%esp)
-	movl	$.LC3, (%esp)
+	movl	$.LC0, (%esp)
 	call	printf
 	movl	$0, %eax
 	leave

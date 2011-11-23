@@ -1,5 +1,38 @@
 #include <stdio.h>
 
+void Func1(int a)
+{
+    printf("%d\n", a);
+}
+
+void Func2(int a, int b)
+{
+    printf("%d\n", a);
+    printf("%d\n", b);
+}
+
+void Func3(int a, int b, int c)
+{
+    printf("%d\n", a);
+    printf("%d\n", b);
+    printf("%d\n", c);
+}
+
+void CallFunc1(void)
+{
+    Func1(99);
+}
+
+void CallFunc2(void)
+{
+    Func2(98, 99);
+}
+
+void CallFunc3(void)
+{
+    Func3(97, 98, 99);
+}
+
 int Equals(int a, int b)
 {
     return a == b;

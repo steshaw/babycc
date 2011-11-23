@@ -43,3 +43,9 @@ int a void expression(){a = !0} => 1
 int a void expression(){a = !99} => 0
 int ifile void expression(){ifile = 1} => 1
 int i int foo(){i=10} void expression(){i=foo()} => 10
+int t int foo(){t=10} int expression(argc, argv) {t=foo()} => 10
+int t int foo(a){t=10} int expression(argc, argv) {t=foo(1)} => 10
+expression 'int t int foo(a){t=10} int expression(argc, argv) {t=foo(1,2)}' failed with:
+Error: attempt call with incorrect number of arguments.
+int a int b int foo(n) {a=n}void expression(){b = foo(9) a=a } => 9
+int a                                      int b                                      int foo(n,m) {                             a = m                                  }                                          void expression() {                        b = foo(8,9)                           a = a                                  } => 9

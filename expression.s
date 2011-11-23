@@ -3,9 +3,9 @@
 foo:
 	pushl	%ebp
 	movl	%esp, %ebp
-	movl	$10, %eax
-	movl	%eax, i
-	popl	%ebp
+	movl	8(%ebp), %eax
+	movl	%eax, a
+	leave
 	ret
 	.size	foo, .-foo
 .globl expression
@@ -13,9 +13,16 @@ foo:
 expression:
 	pushl	%ebp
 	movl	%esp, %ebp
+	movl	$8, %eax
+	pushl	%eax
+	movl	$9, %eax
+	pushl	%eax
 	call	foo
-	movl	%eax, i
-	popl	%ebp
+	movl	%eax, b
+	movl	a, %eax
+	movl	%eax, a
+	leave
 	ret
 	.size	expression, .-expression
-	.comm	i, 4,4
+	.comm	a, 4,4
+	.comm	b, 4,4

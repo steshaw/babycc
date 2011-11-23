@@ -1,4 +1,5 @@
 /**
+ * superc - Super C Compiler
  *
  * eax is used as the "accumulator" register
  * ebx is used as the "temporary" register (used to get store value from the
@@ -52,6 +53,13 @@ static int lookahead;
 static int numGlobals = 0;
 static char* globalNames[256]; // XXX hard limit :-(
 static char globalTypes[256];   // XXX hard limit :-(
+
+// number of parameters only stored here for functions (not variables)
+static int globalNumParams[256];   // XXX hard limit :-(
+
+static int g_numParams = 0;
+static char* g_paramNames[256]; // XXX hard limit :-(
+//static char parameterTypes[256];   // XXX currently all integer
 
 void* SafeMalloc(int n)
 {
@@ -284,6 +292,38 @@ PUBLIC void EmitCall(char *name)
 }
 
 //---------------------------------------------------------------
+// Calculate offset for Pascal calling convention.
+//
+// The implementation is affected by function call conventions.
+// XXX Currently not using C calling convention.
+// XXX C has topsy turvy convention to support vargs.
+//---------------------------------------------------------------
+PRIVATE int CalcParamOffset(int n, int totalParams)
+{
+    return (totalParams-n) * 4 + 4;
+}
+
+//---------------------------------------------------------------
+PUBLIC void EmitLoadParam(int n, int totalParams)
+{
+    int offset = CalcParamOffset(n, totalParams);
+
+    char param[256]; // FIXME yuk
+    sprintf(param, "%d(%%ebp)", offset);
+    EmitOp2("movl", param, "%eax");
+}
+
+//---------------------------------------------------------------
+PUBLIC void EmitStoreParam(int n, int totalParams)
+{
+    int offset = CalcParamOffset(n, totalParams);
+
+    char param[256]; // FIXME yuk
+    sprintf(param, "%d(%%ebp)", offset);
+    EmitOp2("movl", "%eax", param);
+}
+
+//---------------------------------------------------------------
 PUBLIC void EmitFunctionPreamble(char *name)
 {
     printf(".globl %s\n", name);
@@ -298,7 +338,8 @@ PUBLIC void EmitFunctionPreamble(char *name)
 //---------------------------------------------------------------
 PUBLIC void EmitFunctionPostamble(char *name)
 {
-    EmitLn("popl\t%ebp");
+    //EmitLn("popl\t%ebp");
+    EmitLn("leave");
     EmitLn("ret");
     {
         char op[256];
@@ -380,6 +421,7 @@ void Expected(char *s)
     Abort(newString);
 }
 
+void UndefinedIdentifier(char *s) __attribute__ ((noreturn));
 void UndefinedIdentifier(char *s)
 {
     fprintf(stderr, "Undefined identifier '%s'\n", s);
@@ -393,7 +435,7 @@ void DuplicateIdentifier(char *s)
 }
 
 
-int NameIndex(char *name)
+int GlobalNameIndex(char *name)
 {
     for (int i = 0; i < numGlobals; ++i) {
         if (strcmp(globalNames[i], name) == 0) return i;
@@ -403,19 +445,53 @@ int NameIndex(char *name)
     return numGlobals;
 }
 
-bool IsNameDefined(char *name)
+int ParamNameIndex(char *name)
 {
-    for (int i = 0; i < numGlobals; ++i) {
-        if (strcmp(globalNames[i], name) == 0) return true;
+    for (int i = 0; i < g_numParams; ++i) {
+        if (strcmp(g_paramNames[i], name) == 0) return i;
+        // XXX this could be inefficient - could replace with
+        // XXX pointer equality if symbols are first "interned"
+    }
+    return numGlobals;
+}
+
+
+bool IsNameDefined(char *name, char *table[], int numEntries)
+{
+    for (int i = 0; i < numEntries; ++i) {
+        if (strcmp(table[i], name) == 0) return true;
         // XXX this could be inefficient - could replace with
         // XXX pointer equality if symbols are first "interned"
     }
     return false;
 }
 
-void CheckDefined(char *name)
+bool IsGlobalNameDefined(char *name)
 {
-    if (!IsNameDefined(name)) {
+    return IsNameDefined(name, globalNames, numGlobals);
+}
+
+bool IsParamNameDefined(char *name)
+{
+    return IsNameDefined(name, g_paramNames, g_numParams);
+}
+
+
+//---------------------------------------------------------------
+// Check variable is defined. 
+//
+// Returns true when global, false when param and not all all
+// when not defined.
+//---------------------------------------------------------------
+bool CheckDefined(char *name)
+{
+    if (IsGlobalNameDefined(name)) {
+        return true;
+    }
+    else if (IsParamNameDefined(name)) {
+        return false;
+    }
+    else {
         UndefinedIdentifier(name);
     }
 }
@@ -426,7 +502,7 @@ void CheckDefined(char *name)
 /*
 void CheckVarDefined(char *name)
 {
-    int index = NameIndex(name);
+    int index = GlobalNameIndex(name);
     if (index == numGlobals) {
         UndefinedIdentifier(name);
     }
@@ -442,16 +518,29 @@ void CheckVarDefined(char *name)
 // Add global to globalNames array for later emission in the 
 // postamble.
 //---------------------------------------------------------------
-void RegisterGlobal(char *name, NameType type)
+void RegisterGlobal(char *name, NameType type, int numParams)
 {
-    if (IsNameDefined(name)) {
+    if (IsGlobalNameDefined(name)) {
         DuplicateIdentifier(name);
     }
 
     // register
     globalNames[numGlobals] = name;
     globalTypes[numGlobals] = type;
+    globalNumParams[numGlobals] = numParams;
     ++numGlobals;
+}
+
+void RegisterParam(char *name)
+{
+    if (IsParamNameDefined(name)) {
+        DuplicateIdentifier(name);
+    }
+
+    // register
+    g_paramNames[g_numParams] = name;
+    //g_paramTypes[g_numParams] = type;
+    ++g_numParams;
 }
 
 
@@ -612,10 +701,9 @@ void Scan(void)
     else if (IsOp()) {
         GetOperator();
     }
-    else if (lookahead == '{' ||
-             lookahead == '}' ||
-             lookahead == '(' ||
-             lookahead == ')')
+    else if (lookahead == '{' || lookahead == '}' ||
+             lookahead == '(' || lookahead == ')' ||
+             lookahead == ',')
     {
         g_token = lookahead;
         char *g_tokenValue = GcStrDup(" ");
@@ -665,22 +753,64 @@ void Init(char *s)
 // Parser
 //===============================================================
 
+void BooleanExpression(void); // currently the top-level expression
+
+void Param(void)
+{
+    BooleanExpression();
+    EmitPush(); // FIXME - C needs to push in reverse order
+}
+
+//---------------------------------------------------------------
+void FunctionCall(char *name)
+{
+    int numParams = 0;
+    // function call
+    Match('(');
+    if (g_token != ')') {
+        Param(); ++numParams;
+        while (g_token == ',') {
+            Match(',');
+            Param(); ++numParams;
+        }
+    }
+    Match(')');
+
+    bool isGlobal = CheckDefined(name);
+
+    // Check that parameters match.
+    int index = GlobalNameIndex(name);
+    if (numParams != globalNumParams[index]) {
+        Abort("attempt call with incorrect number of arguments");
+    }
+
+
+    if (isGlobal) {
+        EmitCall(name);
+    }
+    else {
+        Abort("trying to call a variable - function types not yet supported");
+    }
+}
+
+//---------------------------------------------------------------
 void Identifier(void)
 {
     char *name = g_tokenValue;
     Match(IdentifierToken);
     if (g_token == '(') {
-        // function call
-        Match('(');
-        //Expression(); // XXX not doing parameters yet
-        CheckDefined(name);
-        EmitCall(name);
-        Match(')');
+        FunctionCall(name);
     }
     else {
         // variable reference
-        CheckDefined(name);
-        EmitLoadVar(name);
+        bool isGlobal = CheckDefined(name);
+        if (isGlobal) {
+            EmitLoadVar(name);
+        }
+        else {
+            int index = ParamNameIndex(name);
+            EmitLoadParam(index, g_numParams);
+        }
     }
 }
 
@@ -1149,15 +1279,38 @@ typedef enum {
 } Type;
 
 
+void FormalParam(void)
+{
+    char *name = g_tokenValue;
+    Match(IdentifierToken);
+    RegisterParam(name);
+}
+
 void FunctionDecl(char *name, Type type)
 {
+    g_numParams = 0; // clear number of parameters in global param table
+
+    //FormalParameters();
     Match('(');
+    if (g_token != ')') {
+        FormalParam();
+        while (g_token == ',') {
+            Match(',');
+            FormalParam();
+        }
+    }
     Match(')');
+
+    // register before Block() for recursive function calls
+    RegisterGlobal(name, FunctionType, g_numParams);
+
     EmitFunctionPreamble(name);
     Block(NULL);
     EmitFunctionPostamble(name);
-    //fprintf(stderr, "func %s : %s\n", name, (type == Int)? "int" : "void");
-    RegisterGlobal(name, FunctionType);
+    /*
+    fprintf(stderr, "func %s(%d) : %s\n", name, g_numParams, 
+            (type == Int)? "int" : "void");
+    */
 }
 
 void VariableDecl(char *name, Type type)
@@ -1166,7 +1319,7 @@ void VariableDecl(char *name, Type type)
         Abort("variable cannot be of type void");
     }
     //fprintf(stderr, "var %s : %s\n", name, (type == Int)? "int" : "void");
-    RegisterGlobal(name, VariableType);
+    RegisterGlobal(name, VariableType, -1);
 }
 
 //---------------------------------------------------------------
