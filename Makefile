@@ -1,4 +1,4 @@
-CFLAGS=-Wall --std=c99
+CFLAGS=-g -Wall --std=c99
 
 .PHONY: all
 all: superc
@@ -18,7 +18,19 @@ check: all main.o
 	check "t=a*b" 0
 	check "t=a*b-b" 0
 	check "t=2*f()" 202
+	check "if 1 {t=4}" 4
+	check "if 1 {t=4} t=5" 5
+	check "if 1 t=4 else t=5" 4
+	check "t=10 while (t) { t = t - 1 }" 0
+	check "t=10 do { t = t - 1 } while (t)" 0
+	-check "a=1 break b=2" 2
+	check "t=10 do { break } while (t)" 10
+	check "t=10 do { t=8 break } while (t)" 8
+	check "t=10 while t { break } " 10
+	check "t=10 while t { t=8 break } " 8
 
+# XXX - Should be able to check for erronous conditions as well as successful
+#       ones.
 
 .PHONY: clean
 clean:

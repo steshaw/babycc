@@ -1,7 +1,7 @@
 /**
  *
  * eax is used as the "accumulator" register
- * ebx is used as the "temporary" register (used to get store value from the 
+ * ebx is used as the "temporary" register (used to get store value from the
  *                                          expression stack)
  *
  * Need one register for swapping in div operator. (ebx)
@@ -17,15 +17,22 @@
 
 typedef int bool;
 
+enum Tokens {
+    IF = 256, // Start after the ascii characters 0-255
+    ELSE,
+    WHILE,
+    DO,
+    BREAK
+};
 
 //---------------------------------------------------------------
 //  Variable Declarations
 //---------------------------------------------------------------
-char *parseString;
-int i = 0;
-char lookahead;
-int numGlobals = 0;
-char* globalNames[256]; // XXX hard limit :-(
+static char* parseString;
+static int i = 0;
+static int lookahead;
+static int numGlobals = 0;
+static char* globalNames[256]; // XXX hard limit :-(
 
 //---------------------------------------------------------------
 // Add global to globalNames array for later emission in the 
@@ -61,6 +68,58 @@ void *GcMalloc(int n)
     return SafeMalloc(n);
 }
 
+char *GcStrDup(char *s)
+{
+    char *newString = GcMalloc(strlen(s) + 1);
+    strcpy(newString, s);
+    return newString;
+}
+
+//===============================================================
+// Assembly Emitter
+//===============================================================
+static int labelNum = 0;
+
+char *NewLabel()
+{
+    ++labelNum;
+    char label[256];
+    sprintf(label, ".L%d", labelNum);
+
+    return GcStrDup(label);
+}
+
+// --------------------------------------------------------------
+//  Output a String with Tab
+// --------------------------------------------------------------
+void Emit(char *s)
+{
+    printf("\t%s", s);
+}
+
+// --------------------------------------------------------------
+//  Output a String with "\t" and "\n"
+// --------------------------------------------------------------
+void EmitLn(char *s)
+{
+   Emit(s);
+   printf("\n");
+}
+
+void EmitLabel(char *label)
+{
+    printf("%s:\n", label);
+}
+
+// --------------------------------------------------------------
+// Emit operation with one parameter
+// --------------------------------------------------------------
+void EmitOp1(char *instruction, char *p1)
+{
+    char op[256];
+    sprintf(op, "%s\t%s\n", instruction, p1);
+    Emit(op);
+}
 
 //===============================================================
 // Lexer
@@ -71,9 +130,32 @@ void *GcMalloc(int n)
 ///---------------------------------------------------------------
 void GetChar(void)
 {
-   //lookahead = getchar();
-   lookahead = parseString[i];
-   ++i;
+    // XXX this is quite inefficient
+
+    if (strncmp(parseString+i, "if", 2) == 0) {
+        lookahead = IF;
+        i += 2;
+    }
+    else if (strncmp(parseString+i, "else", 4) == 0) {
+        lookahead = ELSE;
+        i += 4;
+    }
+    else if (strncmp(parseString+i, "while", 5) == 0) {
+        lookahead = WHILE;
+        i += 5;
+    }
+    else if (strncmp(parseString+i, "do", 2) == 0) {
+        lookahead = DO;
+        i += 2;
+    }
+    else if (strncmp(parseString+i, "break", 5) == 0) {
+        lookahead = BREAK;
+        i += 5;
+    }
+    else {
+        lookahead = parseString[i]; // was: "lookahead = getchar();"
+        ++i;
+    }
 }
 
 // --------------------------------------------------------------
@@ -89,7 +171,7 @@ void EatWhite(void)
 // --------------------------------------------------------------
 void Error(char *s)
 {
-    fprintf(stderr, "\nError: %s.\n", s);
+    fprintf(stderr, "\nError: %s (position %d).\n", s, i);
 }
 
 // --------------------------------------------------------------
@@ -97,8 +179,8 @@ void Error(char *s)
 // --------------------------------------------------------------
 void Abort(char *s)
 {
-   Error(s);
-   abort();
+    Error(s);
+    abort();
 }
 
 // --------------------------------------------------------------
@@ -117,7 +199,7 @@ void Expected(char *s)
 // --------------------------------------------------------------
 //  Match a Specific Input Character
 // --------------------------------------------------------------
-void Match(char c)
+void Match(int c)
 {
     if (lookahead == c) {
         GetChar();
@@ -138,22 +220,22 @@ void Match(char c)
 // --------------------------------------------------------------
 char* GetName()
 {
-   if (!isalpha(lookahead)) Expected("Name");
+    if (!isalpha(lookahead)) Expected("Name");
 
-   char name[256];
-   int i = 0;
+    char name[256];
+    int i = 0;
 
-   while (isalnum(lookahead)) {
+    while (isalnum(lookahead)) {
        name[i++] = lookahead;
        GetChar();
-   }
-   name[i++] = '\0';
-   EatWhite();
+    }
+    name[i++] = '\0';
+    EatWhite();
 
-   // heap allocate the result
-   char *result = GcMalloc(i);
-   strcpy(result, name);
-   return result;
+    // heap allocate the result
+    char *result = GcMalloc(i);
+    strcpy(result, name);
+    return result;
 }
 
 // --------------------------------------------------------------
@@ -161,39 +243,22 @@ char* GetName()
 // --------------------------------------------------------------
 char* GetNum()
 {
-   if (!isdigit(lookahead)) Expected("Integer");
+    if (!isdigit(lookahead)) Expected("Integer");
 
-   char value[256]; // XXX hard limit
-   int i = 0;
+    char value[256]; // XXX hard limit
+    int i = 0;
 
-   while (isdigit(lookahead)) {
+    while (isdigit(lookahead)) {
        value[i++] = lookahead;
        GetChar();
-   }
-   value [i++] = '\0';
-   EatWhite();
+    }
+    value [i++] = '\0';
+    EatWhite();
 
-   // heap allocate the result
-   char *result = GcMalloc(i);
-   strcpy(result, value);
-   return result;
-}
-
-// --------------------------------------------------------------
-//  Output a String with Tab
-// --------------------------------------------------------------
-void Emit(char *s)
-{
-    printf("\t%s", s);
-}
-
-// --------------------------------------------------------------
-//  Output a String with "\t" and "\n"
-// --------------------------------------------------------------
-void EmitLn(char *s)
-{
-   Emit(s);
-   printf("\n");
+    // heap allocate the result
+    char *result = GcMalloc(i);
+    strcpy(result, value);
+    return result;
 }
 
 // --------------------------------------------------------------
@@ -345,10 +410,128 @@ void Assignment(void)
     char op[256];
     sprintf(op, "movl %%eax, %s", name);
     EmitLn(op);
-    /*
-    EmitLn('LEA ' + Name + '(PC),A0');
-    EmitLn('MOVE D0,(A0)')
-    */
+}
+
+//---------------------------------------------------------------
+void If(char *innermostLoopLabel)
+{
+    void Statement(char *innermostLoopLabel);
+
+    Match(IF);
+    char *label1 = NewLabel();
+    char *label2 = label1;
+    //Condition();
+    Expression(); // XXX for the time being just do an expression
+
+    // skip if condition not true
+    {
+        char op[256];
+        sprintf(op, "je\t%s\n", label1);
+        Emit(op);
+    }
+    Statement(innermostLoopLabel);
+
+    if (lookahead == ELSE) {
+        Match(ELSE);
+        label2 = NewLabel();
+        {
+            char op[256];
+            sprintf(op, "jmp\t%s", label2);
+            EmitLn(op);
+        }
+        EmitLabel(label1);
+        Statement(innermostLoopLabel);
+    }
+
+    EmitLabel(label2);
+}
+
+//---------------------------------------------------------------
+void While()
+{
+    void Statement(char *innermostLoopLabel);
+
+    Match(WHILE);
+    char *conditionLabel = NewLabel();
+    EmitLabel(conditionLabel);
+    //Condition();
+    Expression(); // XXX for the time being just do an expression
+
+    char *endLabel = NewLabel();
+    // terminate loop if condition is not true (i.e. equals zero)
+    EmitOp1("je", endLabel);
+    Statement(endLabel);
+    EmitOp1("jmp", conditionLabel);
+    EmitLabel(endLabel);
+}
+
+//---------------------------------------------------------------
+void DoWhile()
+{
+    void Statement(char *innermostLoopLabel);
+
+    Match(DO);
+    char *startLabel = NewLabel();
+    char *endLabel = NewLabel();
+    EmitLabel(startLabel);
+    Statement(endLabel);
+    Match(WHILE);
+    Expression();
+    EmitOp1("jne", startLabel);
+    EmitLabel(endLabel);
+}
+
+//---------------------------------------------------------------
+void Break(char* innermostLoopLabel)
+{
+    Match(BREAK);
+    if (innermostLoopLabel == NULL) {
+        Abort("break statement not within loop");
+    }
+    EmitOp1("jmp", innermostLoopLabel);
+}
+
+//---------------------------------------------------------------
+void Statement(char* innermostLoopLabel)
+{
+    void Block(char *innermostLoopLabel);
+
+    if (lookahead == '{') {
+        Block(innermostLoopLabel);
+    }
+    else if (lookahead == IF) {
+        If(innermostLoopLabel);
+    }
+    else if (lookahead == WHILE) {
+        While();
+    }
+    else if (lookahead == DO) {
+        DoWhile();
+    }
+    else if (lookahead == BREAK) {
+        Break(innermostLoopLabel);
+    }
+    else {
+        Assignment();
+    }
+}
+
+void Statements(char *innermostLoopLabel)
+{
+    while (lookahead == IF || lookahead == WHILE || 
+           lookahead == DO || lookahead == BREAK ||
+           isalpha(lookahead))
+    {
+        Statement(innermostLoopLabel);
+    }
+}
+
+//---------------------------------------------------------------
+void Block(char *innermostLoopLabel)
+{
+    Match('{');
+    Statements(innermostLoopLabel);
+    Match('}');
 }
 
 //---------------------------------------------------------------
@@ -390,9 +573,15 @@ void EmitGlobalVariableDefinitions(void)
 void Top(void)
 {
     EmitFunctionPreamble("expression");
-    Assignment();
-    EmitFunctionPostamble("expression");
 
+    if (lookahead == '{') {
+        Block(NULL);
+    }
+    else {
+        Statements(NULL);
+    }
+
+    EmitFunctionPostamble("expression");
     EmitGlobalVariableDefinitions();
 
     Match('\0'); // end of stream
