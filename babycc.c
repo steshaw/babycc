@@ -22,10 +22,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+
+#define PRIVATE
+#define PUBLIC
+
 typedef enum {
     IfToken = 256, // Start after the ascii characters 0-255
     ElseToken,
     WhileToken,
+    ForToken,
     DoToken,
     BreakToken,
 
@@ -37,6 +42,7 @@ typedef enum {
 
     IdentifierToken,
     NumberToken,
+    StringToken,
 
     IntToken,
     VoidToken,
@@ -68,6 +74,16 @@ static int g_base = 0;
 static char* g_paramNames[256]; // XXX hard limit :-(
 //static char parameterTypes[256];   // XXX currently all integer
 
+static int g_numLiteralStrings = 0;
+char *g_literalStrings[256]; // FIXME
+
+int EnterLiteralString(char *value)
+{
+    int result = g_numLiteralStrings;
+    g_literalStrings[g_numLiteralStrings] = value;
+    ++g_numLiteralStrings;
+    return result;
+}
 
 void PrintUnixError(char *s)
 {
@@ -113,6 +129,7 @@ char *TokenToString(Token token)
             case IfToken: return "if";
             case ElseToken: return "else";
             case WhileToken: return "while";
+            case ForToken: return "for";
             case DoToken: return "do";
             case BreakToken: return "break";
             case OrToken: return "or";
@@ -216,6 +233,13 @@ void EmitLoadConst(char *num)
     EmitOp2("movl", constant, "%eax");
 }
 
+PUBLIC void EmitLoadLiteralString(int num)
+{
+    char value[256];
+    sprintf(value, ".LC%d", num);
+    EmitLoadConst(value);
+}
+
 void EmitLoadTrue()
 {
     EmitLoadConst("1"); // XXX could be a faster way of loading 1?
@@ -293,9 +317,6 @@ void EmitBranch(char *label)
 {
     EmitOp1("jmp", label);
 }
-
-#define PRIVATE
-#define PUBLIC
 
 PRIVATE void EmitRelationalOperator(char *setInstruction)
 {
@@ -391,11 +412,6 @@ PUBLIC void EmitFunctionPreamble(char *name)
     fprintf(g_out, "                                  ");
 
     fprintf(g_out, ", %%esp\n");
-    /*
-    char op[256];
-    sprintf(op, "subl\t$%d, %%esp", numLocals*4);
-    EmitLn(op);
-    */
 }
 
 PUBLIC void PatchNumLocals(int numLocals)
@@ -438,6 +454,16 @@ PUBLIC void EmitGlobalVariableDefinitions(void)
         if (globalTypes[i] == VariableType) {
             EmitOp2(".comm", globalNames[i], "4,4");
         }
+    }
+}
+
+//---------------------------------------------------------------
+PUBLIC void EmitLiteralStrings(void)
+{
+    EmitLn(".section\t.rodata");
+    for (int i = 0; i < g_numLiteralStrings; ++i) {
+        fprintf(g_out, ".LC%d:\n", i);
+        EmitOp1(".string", g_literalStrings[i]);
     }
 }
 
@@ -654,6 +680,7 @@ Keyword keywords[] = {
     DEF_KEYWORD("if", IfToken),
     DEF_KEYWORD("else", ElseToken),
     DEF_KEYWORD("while", WhileToken),
+    DEF_KEYWORD("for", ForToken),
     DEF_KEYWORD("do", DoToken),
     DEF_KEYWORD("break", BreakToken),
     DEF_KEYWORD("int", IntToken),
@@ -783,6 +810,26 @@ void GetNum(void)
     g_tokenValue = GcStrDup(value);
 }
 
+void GetLiteralString(void)
+{
+    char value[1024]; // FIXME
+    int i = 0;
+
+    do {
+        value[i++] = lookahead;
+        GetChar();
+    } while (lookahead != '"');
+    // enter the terminating double quote
+    value[i++] = lookahead;
+    GetChar();
+
+    value[i++] = '\0';
+
+    // heap allocate the result
+    g_token = StringToken;
+    g_tokenValue = GcStrDup(value);
+}
+
 void Scan(void)
 {
     EatWhite();
@@ -803,6 +850,9 @@ void Scan(void)
         char *g_tokenValue = GcStrDup(" ");
         g_tokenValue[0] = lookahead;
         GetChar();
+    }
+    else if (lookahead == '\"') {
+        GetLiteralString();
     }
     else if (lookahead == '\0') {
         g_token = lookahead;
@@ -845,6 +895,7 @@ void Init(char *s)
 
     RegisterGlobal("printi", FunctionType, 1);
     RegisterGlobal("println", FunctionType, 0);
+    RegisterGlobal("prints", FunctionType, 1);
 
     g_out = fopen("e.s", "w");
     if (g_out == NULL) {
@@ -938,6 +989,10 @@ void Factor(void)
     else if (g_token == NumberToken) {
         EmitLoadConst(g_tokenValue);
         Match(NumberToken);
+    }
+    else if (g_token == StringToken) {
+        EmitLoadLiteralString(EnterLiteralString(g_tokenValue));
+        Match(StringToken);
     }
     else {
         Expected("one of '(', <number>, <identifier>");
@@ -1229,11 +1284,11 @@ void Assignment(void)
     }
 }
 
+void Statement(char *innermostLoopLabel);
+
 //---------------------------------------------------------------
 void If(char *innermostLoopLabel)
 {
-    void Statement(char *innermostLoopLabel);
-
     Match(IfToken);
     char *label1 = NewLabel();
     char *label2 = label1;
@@ -1256,10 +1311,8 @@ void If(char *innermostLoopLabel)
 }
 
 //---------------------------------------------------------------
-void While()
+void While(void)
 {
-    void Statement(char *innermostLoopLabel);
-
     Match(WhileToken);
     char *conditionLabel = NewLabel();
     EmitLabel(conditionLabel);
@@ -1275,10 +1328,63 @@ void While()
 }
 
 //---------------------------------------------------------------
-void DoWhile()
+void For(void)
 {
-    void Statement(char *innermostLoopLabel);
+    Match(ForToken);
+    Match('(');
+    // optional initialisation expression
+    if (g_token != ';') Assignment();
+    Match(';');
 
+    char *loopTopLabel = NewLabel();
+    char *endLabel = NewLabel();
+    EmitLabel(loopTopLabel);
+
+    // optional condition expression
+    if (g_token != ';') {
+        BooleanExpression();
+        // terminate loop if condition is false
+        EmitBranchFalse(endLabel);
+    }
+    Match(';');
+
+    FILE *tmp = NULL;
+
+    // optional iteration expression
+    if (g_token != ')') {
+        // FIXME:
+        // Output from Assignment() needs to be redirected to a temporary
+        // file in order to insert the output after the body.
+        //g_out = fopen("for.tmp", "w");
+        tmp = tmpfile();
+        if (tmp == NULL) PrintUnixError("fopen");
+        FILE *remember = g_out;
+        g_out = tmp;
+        Assignment();
+        //fclose(g_out);
+        fflush(tmp);
+        g_out = remember;
+    }
+
+    Match(')');
+
+    Statement(endLabel);
+    // insert previously saved for.tmp stuff
+    //FILE *tmp = fopen("for.tmp", "r");
+    rewind(tmp);
+    int c;
+    while ((c = fgetc(tmp)) != EOF) {
+        fputc(c, g_out);
+    }
+
+    EmitBranch(loopTopLabel);
+
+    EmitLabel(endLabel);
+}
+
+//---------------------------------------------------------------
+void DoWhile(void)
+{
     Match(DoToken);
     char *startLabel = NewLabel();
     char *endLabel = NewLabel();
@@ -1322,6 +1428,9 @@ void Statement(char* innermostLoopLabel)
     else if (g_token == WhileToken) {
         While();
     }
+    else if (g_token == ForToken) {
+        For();
+    }
     else if (g_token == DoToken) {
         DoWhile();
     }
@@ -1341,9 +1450,13 @@ void Statement(char* innermostLoopLabel)
 
 void Statements(char *innermostLoopLabel)
 {
+    while (g_token != '}')
+        /*
     while (g_token == IfToken || g_token == WhileToken || 
+           g_token == ForToken || 
            g_token == DoToken || g_token == BreakToken ||
            g_token == ReturnToken || g_token == IdentifierToken)
+           */
     {
         Statement(innermostLoopLabel);
     }
@@ -1355,7 +1468,6 @@ void Statements(char *innermostLoopLabel)
 //---------------------------------------------------------------
 void LocalDeclarations(void)
 {
-    g_localDeclarations = 0;
     while (g_token == IntToken) {
         Match(IntToken);
         char *name = g_tokenValue;
@@ -1424,25 +1536,13 @@ void FunctionDecl(char *name, Type type)
 
     // register before Block() for recursive function calls
     RegisterGlobal(name, FunctionType, g_base);
-
-    //EmitFunctionPreamble(name, g_localDeclarations);
     EmitFunctionPreamble(name);
+    g_localDeclarations = 0;
     Block(NULL);
     PatchNumLocals(g_localDeclarations);
-
-    // XXX This is a modified copy of Block() right here.
-    // XXX It was necessary to delay EmitFunctionPreamble until
-    // XXX the number of local variable is known.
-    /*
-    Match('{');
-    LocalDeclarations();
-    EmitFunctionPreamble(name, g_localDeclarations);
-    Statements(NULL);
-    Match('}');
-    */
     EmitFunctionPostamble(name);
     /*
-    fprintf(stderr, "func %s(%d) : %s\n", name, g_numParams, 
+    fprintf(stderr, "func %s(%d) : %s\n", name, g_numParams,
             (type == Int)? "int" : "void");
     */
 }
@@ -1486,10 +1586,10 @@ void Root(void)
         else {
             VariableDecl(name, type);
         }
-
     }
     Match('\0');
     EmitGlobalVariableDefinitions();
+    EmitLiteralStrings();
 }
 
 char *ReadFile(char *filename)

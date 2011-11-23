@@ -13,7 +13,12 @@ example.s: example.o
 example: example.o
 
 .PHONY: check
-check: all main.o
+check: all main.o check-expressions run-tests
+
+run-tests:
+	run_tests
+
+check-expressions:
 	@check "void expression(){int a; a=1; }" 1
 	@check "void expression(){int a int b a=1 b=2}" 2
 	@check "void expression(){int a int b int c a=1 b=2 c=3}" 3

@@ -3,7 +3,7 @@
 main:
 	pushl	%ebp
 	movl	%esp, %ebp
-	subl	$0                                , %esp
+	subl	$4                                , %esp
 	movl	$0, %eax
 	movl	%eax, -4(%ebp)
 .L1:
@@ -31,3 +31,4 @@ main:
 	leave
 	ret
 	.size	main, .-main
+	.section	.rodata
