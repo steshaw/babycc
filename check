@@ -12,5 +12,8 @@ if [ $? -eq 0 ]; then
     cat expression.out
     if [ "`<expression.out`" -ne "$expected" ]; then
         echo "EXPECTED $expected"
+        exit 1
     fi
 fi
+
+exit 0

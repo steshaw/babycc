@@ -3,16 +3,13 @@
 expression:
 	pushl	%ebp
 	movl	%esp, %ebp
-	movl	$0,%eax
+	movl	$2, %eax
 	push	%eax
-	movl	$5, %eax
-	push	%eax
-	movl	$7, %eax
+	call	f
 	popl	%ebx
-	subl	%ebx,%eax
-	negl	%eax
-	popl	%ebx
-	subl	%ebx,%eax
-	negl	%eax
+	imul	%ebx,%eax
+	movl %eax, t
 	pop	%ebp
 	ret
+	.size	expression, .-expression
+	.comm	t,4,4

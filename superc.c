@@ -4,6 +4,10 @@
  * ebx is used as the "temporary" register (used to get store value from the 
  *                                          expression stack)
  *
+ * Need one register for swapping in div operator. (ebx)
+ * Need one register for function calls.
+ *
+ * The rest could be used as a faster "stack".
  */
 
 #include <stdio.h>
@@ -23,6 +27,24 @@ typedef int bool;
 char *parseString;
 int i = 0;
 char lookahead;
+int numGlobals = 0;
+char globalNames[256]; // XXX hard limit :-(
+
+//---------------------------------------------------------------
+// Add global to globalNames array for later emission in the 
+// postamble.
+//---------------------------------------------------------------
+void RegisterGlobal(char c)
+{
+    // return if registered already
+    for (int i = 0; i < numGlobals; ++i) {
+        if (globalNames[i] == c) return;
+    }
+
+    // register
+    globalNames[numGlobals] = c;
+    ++numGlobals;
+}
 
 void* SafeMalloc(int n)
 {
@@ -158,16 +180,37 @@ void Init(char *s)
 
 
 //---------------------------------------------------------------
-// factor ::= "(" expression ")" | number
+// factor ::= "(" expression ")"
+//          | (variable ["(" expression ")"]
+//          | number
 //---------------------------------------------------------------
 void Factor(void)
 {
-    void Expression(void );
+    void Expression(void);
 
     if (lookahead == '(') {
         Match('(');
         Expression();
         Match(')');
+    }
+    else if (isalpha(lookahead)) {
+        char name = GetName();
+        if (lookahead == '(') {
+            // function call
+            Match('(');
+            //Expression(); // XXX not doing parameters yet
+            char s[256];
+            sprintf(s, "call\t%c", name);
+            EmitLn(s);
+            Match(')');
+        }
+        else {
+            // variable reference
+            char s[256];
+            sprintf(s, "movl\t%c, %%eax", name);
+            EmitLn(s);
+            RegisterGlobal(name);
+        }
     }
     else {
         char s[256];
@@ -207,7 +250,6 @@ void Term(void)
         switch (lookahead) {
             case '*': Multiply(); break;
             case '/': Divide(); break;
-            default: Expected("'*' or '/'");
         };
     }
 }
@@ -224,7 +266,7 @@ void Add(void)
 }
 
 //---------------------------------------------------------------
-// Recognize and Translate a Subtract }
+// Recognize and Translate a Subtract
 //---------------------------------------------------------------
 void Subtract(void)
 {
@@ -233,25 +275,6 @@ void Subtract(void)
     EmitLn("popl\t%ebx");
     EmitLn("subl\t%ebx,%eax");
     EmitLn("negl\t%eax");
-}
-
-//---------------------------------------------------------------
-void EmitPreamble(void)
-{
-    printf(".globl expression\n");
-    printf("\t.type\texpression, @function\n");
-    printf("expression:\n");
-
-    // function preamble
-    EmitLn("pushl\t%ebp");
-    EmitLn("movl\t%esp, %ebp");
-}
-
-//---------------------------------------------------------------
-void EmitPostamble(void)
-{
-    EmitLn("pop\t%ebp");
-    EmitLn("ret");
 }
 
 //---------------------------------------------------------------
@@ -275,20 +298,70 @@ void Expression(void)
         switch (lookahead) {
             case '+': Add(); break;
             case '-': Subtract(); break;
-            default: Expected("'+' or '-'");
         }
     }
 
 }
 
 //---------------------------------------------------------------
+void Assignment(void)
+{
+    char name = GetName();
+    RegisterGlobal(name);
+    Match('=');
+    Expression();
+    char op[256];
+    sprintf(op, "movl %%eax, %c", name);
+    EmitLn(op);
+    /*
+    EmitLn('LEA ' + Name + '(PC),A0');
+    EmitLn('MOVE D0,(A0)')
+    */
+}
+
+//---------------------------------------------------------------
+void EmitFunctionPreamble(char *name)
+{
+    printf(".globl %s\n", name);
+    printf("\t.type\t%s, @function\n", name);
+    printf("%s:\n", name);
+
+    // function preamble
+    EmitLn("pushl\t%ebp");
+    EmitLn("movl\t%esp, %ebp");
+}
+
+//---------------------------------------------------------------
+void EmitFunctionPostamble(char *name)
+{
+    EmitLn("pop\t%ebp");
+    EmitLn("ret");
+    {
+        char op[256];
+        sprintf(op, ".size\t%s, .-%s", name, name);
+        EmitLn(op);
+    }
+
+}
+
+//---------------------------------------------------------------
+void EmitGlobalVariableDefinitions(void)
+{
+    for (int i = 0; i < numGlobals; ++i) {
+        char op[256];
+        sprintf(op, ".comm\t%c,4,4", globalNames[i]);
+        EmitLn(op);
+    }
+}
+
+//---------------------------------------------------------------
 void Top(void)
 {
-    EmitPreamble();
+    EmitFunctionPreamble("expression");
+    Assignment();
+    EmitFunctionPostamble("expression");
 
-    Expression();
-
-    EmitPostamble();
+    EmitGlobalVariableDefinitions();
 
     Match('\0'); // end of stream
 }
