@@ -17,9 +17,6 @@
 
 typedef int bool;
 
-//===============================================================
-// Lexer
-//===============================================================
 
 //---------------------------------------------------------------
 //  Variable Declarations
@@ -28,21 +25,21 @@ char *parseString;
 int i = 0;
 char lookahead;
 int numGlobals = 0;
-char globalNames[256]; // XXX hard limit :-(
+char* globalNames[256]; // XXX hard limit :-(
 
 //---------------------------------------------------------------
 // Add global to globalNames array for later emission in the 
 // postamble.
 //---------------------------------------------------------------
-void RegisterGlobal(char c)
+void RegisterGlobal(char *name)
 {
     // return if registered already
     for (int i = 0; i < numGlobals; ++i) {
-        if (globalNames[i] == c) return;
+        if (strcmp(globalNames[i], name) == 0) return; // XXX inefficient
     }
 
     // register
-    globalNames[numGlobals] = c;
+    globalNames[numGlobals] = name;
     ++numGlobals;
 }
 
@@ -65,6 +62,10 @@ void *GcMalloc(int n)
 }
 
 
+//===============================================================
+// Lexer
+//===============================================================
+
 ///---------------------------------------------------------------
 ///  Read New Character From Input Stream
 ///---------------------------------------------------------------
@@ -73,6 +74,14 @@ void GetChar(void)
    //lookahead = getchar();
    lookahead = parseString[i];
    ++i;
+}
+
+// --------------------------------------------------------------
+void EatWhite(void)
+{
+    while (isspace(lookahead)) {
+        GetChar();
+    }
 }
 
 // --------------------------------------------------------------
@@ -112,6 +121,7 @@ void Match(char c)
 {
     if (lookahead == c) {
         GetChar();
+        EatWhite();
     }
     else if (c == '\0') {
         Expected("End of stream");
@@ -125,26 +135,47 @@ void Match(char c)
 
 // --------------------------------------------------------------
 //  Get an Identifier
-//  XXX identifier is a single character!!!
 // --------------------------------------------------------------
-char GetName()
+char* GetName()
 {
    if (!isalpha(lookahead)) Expected("Name");
 
-   char result = tolower(lookahead);
-   GetChar();
+   char name[256];
+   int i = 0;
+
+   while (isalnum(lookahead)) {
+       name[i++] = lookahead;
+       GetChar();
+   }
+   name[i++] = '\0';
+   EatWhite();
+
+   // heap allocate the result
+   char *result = GcMalloc(i);
+   strcpy(result, name);
    return result;
 }
 
 // --------------------------------------------------------------
 //  Get a Number
 // --------------------------------------------------------------
-char GetNum()
+char* GetNum()
 {
    if (!isdigit(lookahead)) Expected("Integer");
 
-   char result = lookahead;
-   GetChar();
+   char value[256]; // XXX hard limit
+   int i = 0;
+
+   while (isdigit(lookahead)) {
+       value[i++] = lookahead;
+       GetChar();
+   }
+   value [i++] = '\0';
+   EatWhite();
+
+   // heap allocate the result
+   char *result = GcMalloc(i);
+   strcpy(result, value);
    return result;
 }
 
@@ -172,6 +203,7 @@ void Init(char *s)
 {
     parseString = s;
     GetChar();
+    EatWhite();
 }
 
 //===============================================================
@@ -194,27 +226,27 @@ void Factor(void)
         Match(')');
     }
     else if (isalpha(lookahead)) {
-        char name = GetName();
+        char *name = GetName();
         if (lookahead == '(') {
             // function call
             Match('(');
             //Expression(); // XXX not doing parameters yet
             char s[256];
-            sprintf(s, "call\t%c", name);
+            sprintf(s, "call\t%s", name);
             EmitLn(s);
             Match(')');
         }
         else {
             // variable reference
             char s[256];
-            sprintf(s, "movl\t%c, %%eax", name);
+            sprintf(s, "movl\t%s, %%eax", name);
             EmitLn(s);
             RegisterGlobal(name);
         }
     }
     else {
         char s[256];
-        sprintf(s, "movl\t$%c, %%eax", GetNum());
+        sprintf(s, "movl\t$%s, %%eax", GetNum());
         EmitLn(s);
     }
 }
@@ -306,12 +338,12 @@ void Expression(void)
 //---------------------------------------------------------------
 void Assignment(void)
 {
-    char name = GetName();
+    char *name = GetName();
     RegisterGlobal(name);
     Match('=');
     Expression();
     char op[256];
-    sprintf(op, "movl %%eax, %c", name);
+    sprintf(op, "movl %%eax, %s", name);
     EmitLn(op);
     /*
     EmitLn('LEA ' + Name + '(PC),A0');
@@ -349,7 +381,7 @@ void EmitGlobalVariableDefinitions(void)
 {
     for (int i = 0; i < numGlobals; ++i) {
         char op[256];
-        sprintf(op, ".comm\t%c,4,4", globalNames[i]);
+        sprintf(op, ".comm\t%s,4,4", globalNames[i]);
         EmitLn(op);
     }
 }

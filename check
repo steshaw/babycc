@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ $# -ne 2 ]; then
+    echo "usage: check <expression> <expected-result>" >&2
+    exit 2
+fi
+
 expression=$1
 expected=$2
 

@@ -1,8 +1,8 @@
 rm -f *.o superc
 cc -Wall --std=c99    superc.c   -o superc
 cc -Wall --std=c99   -c -o main.o main.c
-check "8+4" 12
-expression is '8+4'
+check "t=8+4" 12
+expression is 't=8+4'
 .globl expression
 	.type	expression, @function
 expression:
@@ -13,12 +13,14 @@ expression:
 	movl	$4, %eax
 	popl	%ebx
 	addl	%ebx,%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 12
-check "8-4" 4
-expression is '8-4'
+check "t=8-4" 4
+expression is 't=8-4'
 .globl expression
 	.type	expression, @function
 expression:
@@ -30,12 +32,14 @@ expression:
 	popl	%ebx
 	subl	%ebx,%eax
 	negl	%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 4
-check "2*3" 6
-expression is '2*3'
+check "t=2*3" 6
+expression is 't=2*3'
 .globl expression
 	.type	expression, @function
 expression:
@@ -46,12 +50,14 @@ expression:
 	movl	$3, %eax
 	popl	%ebx
 	imul	%ebx,%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 6
-check "6/2" 3
-expression is '6/2'
+check "t=6/2" 3
+expression is 't=6/2'
 .globl expression
 	.type	expression, @function
 expression:
@@ -64,12 +70,14 @@ expression:
 	popl	%eax
 	cltd
 	idiv	%ebx,%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 3
-check "2+8*3" 26
-expression is '2+8*3'
+check "t=2+8*3" 26
+expression is 't=2+8*3'
 .globl expression
 	.type	expression, @function
 expression:
@@ -84,12 +92,14 @@ expression:
 	imul	%ebx,%eax
 	popl	%ebx
 	addl	%ebx,%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 26
-check "(2+8)*3" 30
-expression is '(2+8)*3'
+check "t=(2+8)*3" 30
+expression is 't=(2+8)*3'
 .globl expression
 	.type	expression, @function
 expression:
@@ -104,12 +114,14 @@ expression:
 	movl	$3, %eax
 	popl	%ebx
 	imul	%ebx,%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 30
-check "2*(3+4)" 14
-expression is '2*(3+4)'
+check "t=2*(3+4)" 14
+expression is 't=2*(3+4)'
 .globl expression
 	.type	expression, @function
 expression:
@@ -124,12 +136,14 @@ expression:
 	addl	%ebx,%eax
 	popl	%ebx
 	imul	%ebx,%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 14
-check "((3+4)+(5-6))/(1+2)" 2
-expression is '((3+4)+(5-6))/(1+2)'
+check "t=((3+4)+(5-6))/(1+2)" 2
+expression is 't=((3+4)+(5-6))/(1+2)'
 .globl expression
 	.type	expression, @function
 expression:
@@ -159,12 +173,14 @@ expression:
 	popl	%eax
 	cltd
 	idiv	%ebx,%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 2
-check "-1" -1
-expression is '-1'
+check "t=-1" -1
+expression is 't=-1'
 .globl expression
 	.type	expression, @function
 expression:
@@ -176,12 +192,14 @@ expression:
 	popl	%ebx
 	subl	%ebx,%eax
 	negl	%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 -1
-check "-(5-7)" 2
-expression is '-(5-7)'
+check "t=-(5-7)" 2
+expression is 't=-(5-7)'
 .globl expression
 	.type	expression, @function
 expression:
@@ -198,12 +216,14 @@ expression:
 	popl	%ebx
 	subl	%ebx,%eax
 	negl	%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 2
-check "a*b" 0
-expression is 'a*b'
+check "t=a*b" 0
+expression is 't=a*b'
 .globl expression
 	.type	expression, @function
 expression:
@@ -214,14 +234,16 @@ expression:
 	movl	b, %eax
 	popl	%ebx
 	imul	%ebx,%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 	.comm	a,4,4
 	.comm	b,4,4
 0
-check "a*b-b" 0
-expression is 'a*b-b'
+check "t=a*b-b" 0
+expression is 't=a*b-b'
 .globl expression
 	.type	expression, @function
 expression:
@@ -237,14 +259,16 @@ expression:
 	popl	%ebx
 	subl	%ebx,%eax
 	negl	%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 	.comm	a,4,4
 	.comm	b,4,4
 0
-check "2*f()" 202
-expression is '2*f()'
+check "t=2*f()" 202
+expression is 't=2*f()'
 .globl expression
 	.type	expression, @function
 expression:
@@ -255,7 +279,9 @@ expression:
 	call	f
 	popl	%ebx
 	imul	%ebx,%eax
+	movl %eax, t
 	pop	%ebp
 	ret
 	.size	expression, .-expression
+	.comm	t,4,4
 202
