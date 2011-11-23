@@ -12,6 +12,8 @@
 
 /*
  * Registers (as reported by ddd):
+ *  
+ *  XXX where is al?
  *
  * Integer registers:
  *      eax
@@ -62,6 +64,10 @@ enum Token {
     FalseToken,
     OrToken,
     AndToken,
+    EqualsToken,
+    NotEqualsToken,
+    LessThanToken,
+    GreaterThanToken,
 };
 
 //---------------------------------------------------------------
@@ -182,6 +188,10 @@ struct Keyword keywords[] = {
     DEF_KEYWORD("false", FalseToken),
     DEF_KEYWORD("||", OrToken),
     DEF_KEYWORD("&&", AndToken),
+    DEF_KEYWORD("==", EqualsToken),
+    DEF_KEYWORD("!=", NotEqualsToken),
+    DEF_KEYWORD("<", LessThanToken),
+    DEF_KEYWORD(">", GreaterThanToken),
 };
 
 // calculate the size of a static array
@@ -506,19 +516,88 @@ void Or(void)
     EmitLabel(endLabel);
 }
 
+//---------------------------------------------------------------
+static bool IsRelOp()
+{
+    switch (lookahead) {
+        case EqualsToken:
+        case NotEqualsToken:
+        case LessThanToken:
+        case GreaterThanToken:
+            return true;
+        default: 
+            return false;
+    }
+}
+
+//---------------------------------------------------------------
+void RelationalOperator(enum Token token, char *setInstruction)
+{
+    Match(token);
+    Expression();
+    EmitLn("popl\t%ebx");
+    EmitLn("cmpl\t%ebx, %eax");
+    EmitOp1(setInstruction, "al");
+    EmitLn("movzbl\t%al, %eax");
+}
+
+//---------------------------------------------------------------
+void Equals(void)
+{
+    RelationalOperator(EqualsToken, "sete");
+}
+
+//---------------------------------------------------------------
+void NotEquals(void)
+{
+    RelationalOperator(NotEqualsToken, "setne");
+}
+
+//---------------------------------------------------------------
+void LessThan(void)
+{
+    RelationalOperator(LessThanToken, "setl");
+}
+
+//---------------------------------------------------------------
+void GreaterThan(void)
+{
+    RelationalOperator(GreaterThanToken, "setg");
+}
+
+//---------------------------------------------------------------
+// relation ::= expression [relop expression]
+//---------------------------------------------------------------
+static void Relation(void)
+{
+    Expression();
+    if (IsRelOp()) {
+        EmitLn("push\t%eax");
+        switch (lookahead) {
+            case EqualsToken: Equals(); break;
+            case NotEqualsToken: NotEquals(); break;
+            case LessThanToken: LessThan(); break;
+            case GreaterThanToken: GreaterThan(); break;
+        }
+    }
+}
 
 //---------------------------------------------------------------
 static void BooleanFactor(void)
 {
-    if (!IsBoolean(lookahead)) Expected("Boolean literal");
-    if (GetBoolean()) {
-        Match(TrueToken);
-        EmitLn("movl\t$1, %eax");// could use -1 and then bitwize not is 0
+    if (IsBoolean(lookahead)) {
+        if (GetBoolean()) {
+            Match(TrueToken);
+            EmitLn("movl\t$1, %eax");// could use -1 and then bitwize not is 0
+        }
+        else {
+            Match(FalseToken);
+            // XXX Is there a cheaper way to load zero?
+            // XXX i.e. Something like CLR on 68000?
+            EmitLn("movl\t$0, %eax"); 
+        }
     }
-    else {
-        Match(FalseToken);
-        EmitLn("movl\t$0, %eax"); // XXX is there a cheaper way to load zero?
-    }
+    else Relation();
 }
 
 static void NotFactor(void)

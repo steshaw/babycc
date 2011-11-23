@@ -1,1 +1,22 @@
+rm -f *.o superc
 cc -g -Wall --std=c99    superc.c   -o superc
+cc -g -Wall --std=c99   -c -o main.o main.c
+check "a" "Error: '=' expected (position 2)."
+expression is 'a'
+.globl expression
+	.type	expression, @function
+expression:
+	pushl	%ebp
+	movl	%esp, %ebp
+	movl	a, %eax
+	popl	%ebp
+	ret
+	.size	expression, .-expression
+	.comm	a,4,4
+=> 0
+./check: line 29: [: Error: '=' expected (position 2).: integer expression expected
+check "t=8+4" 12
+expression is 't=8+4'
+Error: End of stream expected (position 2).
+EXPECTED 12
+make: *** [check] Error 1

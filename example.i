@@ -1,7 +1,7 @@
-# 1 "expression.c"
+# 1 "example.c"
 # 1 "<built-in>"
 # 1 "<command line>"
-# 1 "expression.c"
+# 1 "example.c"
 # 1 "/usr/include/stdio.h" 1 3 4
 # 28 "/usr/include/stdio.h" 3 4
 # 1 "/usr/include/features.h" 1 3 4
@@ -906,7 +906,7 @@ extern int ftrylockfile (FILE *__stream) ;
 extern void funlockfile (FILE *__stream) ;
 # 831 "/usr/include/stdio.h" 3 4
 
-# 2 "expression.c" 2
+# 2 "example.c" 2
 
 int Equals(int a, int b)
 {

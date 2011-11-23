@@ -1,7 +1,24 @@
 #include <stdio.h>
 
-int a;
-int b;
+int Equals(int a, int b)
+{
+    return a == b;
+}
+
+int NotEquals(int a, int b)
+{
+    return a != b;
+}
+
+int LessThan(int a, int b)
+{
+    return a < b;
+}
+
+int GreaterThan(int a, int b)
+{
+    return a > b;
+}
 
 int Not(int a)
 {
@@ -28,28 +45,15 @@ int Sub(int a, int b)
     return a - b;
 }
 
-int d(void)
+int Negate(int n)
 {
-    int a = 1;
-    int b = 2;
-
-    return a - -b;
+    return -n;
 }
 
-int c(void)
+void If(int a)
 {
-    if (a == 10)
+    if (a)
         printf("a == 10\n");
     else
         printf("a != 10\n");
-
-    return 10*b;
-}
-
-int expression(void)
-{
-    a = 2;
-    b = 3;
-
-    return a*c();
 }
